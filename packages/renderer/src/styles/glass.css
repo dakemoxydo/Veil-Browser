@@ -1,0 +1,57 @@
+.glass-panel {
+  background: var(--veil-glass-bg);
+  backdrop-filter: blur(var(--veil-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--veil-blur)) saturate(180%);
+  border: 1px solid var(--veil-glass-border);
+  border-radius: var(--radius-panel);
+}
+
+.window-drag {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* TitleBar Buttons */
+.win-btn {
+  background: transparent;
+  border: none;
+  color: var(--veil-text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.win-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--veil-text-primary);
+}
+
+.win-btn.danger {
+  color: var(--veil-danger);
+}
+
+.win-btn.danger:hover {
+  background: rgba(255, 60, 60, 0.15);
+  color: var(--veil-danger);
+}
+
+.settings-btn {
+  background: transparent;
+  border: none;
+  color: var(--veil-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  transition: color 150ms ease;
+}
+
+.settings-btn:hover {
+  color: var(--veil-text-primary);
+}

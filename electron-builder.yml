@@ -1,0 +1,46 @@
+appId: dev.veil.browser
+productName: Veil Browser
+copyright: "Copyright © 2026 Veil"
+forceCodeSigning: false
+
+directories:
+  output: dist
+  buildResources: assets/icons
+
+files:
+  - packages/main/dist/**
+  - packages/renderer/dist/**
+  - package.json
+  - "node_modules/**/*"
+  - filter:
+      - dist/**
+      - package.json
+    from: packages/shared
+    to: node_modules/@veil/shared
+
+asarUnpack:
+  - "packages/main/dist/workers/**"
+
+win:
+  target:
+    - target: portable
+      arch: [x64]
+  icon: veil_icon.ico
+  artifactName: VeilBrowser-${version}-portable.exe
+
+mac:
+  target: dmg
+  icon: veil_icon.icns
+  hardenedRuntime: true
+  category: public.app-category.productivity
+
+linux:
+  target: AppImage
+  icon: veil_icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

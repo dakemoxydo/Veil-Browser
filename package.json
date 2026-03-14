@@ -1,0 +1,39 @@
+{
+  "name": "veil-browser",
+  "version": "0.1.0",
+  "description": "Privacy-first Liquid Glass browser",
+  "author": "Veil",
+  "main": "packages/main/dist/index.js",
+  "private": true,
+  "workspaces": [
+    "packages/main",
+    "packages/renderer",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "concurrently -n MAIN,RENDERER -c blue,cyan \"npm run dev --workspace=packages/main\" \"npm run dev --workspace=packages/renderer\"",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/renderer && npm run build --workspace=packages/main",
+    "dist": "npm run build && electron-builder",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:main": "vitest run --config vitest.config.ts",
+    "test:renderer": "vitest run --config vitest.config.renderer.ts"
+  },
+  "dependencies": {
+    "@cliqz/adblocker-electron": "^1.31.0",
+    "better-sqlite3": "^12.6.2",
+    "cross-fetch": "^4.0.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/ui": "^4.1.0",
+    "concurrently": "^8.2.2",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.1",
+    "jsdom": "^28.1.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "paths": {
+      "@veil/shared": [
+        "../shared/dist/index"
+      ],
+      "@veil/shared/*": [
+        "../shared/dist/*"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/__mocks__",
+    "src/**/*.test.ts"
+  ]
+}

@@ -1,0 +1,21 @@
+/* Liquid spring keyframes and animations */
+.tab-island {
+  transition: opacity 200ms var(--veil-ease),
+              transform 300ms var(--veil-spring),
+              width 350ms var(--veil-spring);
+}
+
+.tab-island:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.tab-island:not(:hover) {
+  opacity: 0.72;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

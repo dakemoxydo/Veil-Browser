@@ -1,0 +1,24 @@
+{
+  "name": "@veil/main",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsc -p tsconfig.json --watch",
+    "build": "tsc -p tsconfig.json",
+    "start": "set \"ELECTRON_RUN_AS_NODE=\" && electron ."
+  },
+  "dependencies": {
+    "@veil/shared": "*",
+    "@cliqz/adblocker-electron": "^1.31.0",
+    "better-sqlite3": "^12.6.2",
+    "cross-fetch": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.10.7",
+    "electron": "^35.7.5",
+    "typescript": "^5.7.3"
+  }
+}
