@@ -9,6 +9,7 @@ import { HomePage } from './HomePage';
 import { Sidebar } from './Sidebar';
 import { DebugPanel } from './DebugPanel';
 import { SettingsPage } from './SettingsPage';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export const VeilShell: React.FC = () => {
   const settings = useVeilStore((s) => s.settings);
@@ -105,7 +106,9 @@ export const VeilShell: React.FC = () => {
           }}
         >
           {currentView === 'settings' ? (
-            <SettingsPage />
+            <ErrorBoundary name="Settings">
+              <SettingsPage />
+            </ErrorBoundary>
           ) : tabs.length === 0 ? (
             <HomePage />
           ) : null}
@@ -114,7 +117,9 @@ export const VeilShell: React.FC = () => {
           <StatusBar />
         </div>
       </div>
-      <DebugPanel />
+      <ErrorBoundary name="Debug Panel">
+        <DebugPanel />
+      </ErrorBoundary>
     </div>
   );
 };
