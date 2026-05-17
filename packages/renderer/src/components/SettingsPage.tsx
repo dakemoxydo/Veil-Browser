@@ -145,13 +145,6 @@ export const SettingsPage: React.FC = () => {
                 onChange={(checked) => update({ appearance: { ...settings.appearance, showBookmarksBar: checked } })}
               />
             </SettingRow>
-
-            <SettingRow label="Show sidebar">
-              <Toggle
-                checked={settings.appearance.showSidebar}
-                onChange={(checked) => update({ appearance: { ...settings.appearance, showSidebar: checked } })}
-              />
-            </SettingRow>
           </div>
         )}
       </div>

@@ -51,6 +51,5 @@ describe('DEFAULT_SETTINGS', () => {
   it('has all required appearance fields', () => {
     expect(DEFAULT_SETTINGS.appearance).toBeDefined();
     expect(typeof DEFAULT_SETTINGS.appearance.showBookmarksBar).toBe('boolean');
-    expect(typeof DEFAULT_SETTINGS.appearance.showSidebar).toBe('boolean');
   });
 });

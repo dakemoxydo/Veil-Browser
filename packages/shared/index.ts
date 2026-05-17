@@ -75,7 +75,6 @@ export interface VeilSettings {
   };
   appearance: {
     showBookmarksBar: boolean;
-    showSidebar: boolean;
   };
 }
 
@@ -94,7 +93,6 @@ export const DEFAULT_SETTINGS: VeilSettings = {
   },
   appearance: {
     showBookmarksBar: true,
-    showSidebar: true,
   },
 };
 

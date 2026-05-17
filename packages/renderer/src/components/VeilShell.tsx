@@ -1,12 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useVeilStore } from '../store/useVeilStore';
-import { TitleBar } from './TitleBar';
 import { TabBar } from './TabBar';
 import { AddressBar } from './AddressBar';
 import { BookmarkBar } from './BookmarkBar';
 import { StatusBar } from './StatusBar';
 import { HomePage } from './HomePage';
-import { Sidebar } from './Sidebar';
 import { DebugPanel } from './DebugPanel';
 import { SettingsPage } from './SettingsPage';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -60,62 +58,51 @@ export const VeilShell: React.FC = () => {
       observer.disconnect();
       window.removeEventListener('resize', updateOffset);
     };
-  }, [settings.appearance.showBookmarksBar, settings.appearance.showSidebar]);
+  }, [settings.appearance.showBookmarksBar]);
 
   return (
     <div
       className="veil-shell"
       style={{
         display: 'flex',
+        flexDirection: 'column',
         height: '100vh',
         width: '100vw',
         overflow: 'hidden',
         background: 'var(--bg-app)',
       }}
     >
-      {settings.appearance.showSidebar && <Sidebar />}
-      <div
-        className="main-content"
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ flexShrink: 0 }}>
-          <TitleBar />
-        </div>
-        <div style={{ flexShrink: 0 }}>
-          <TabBar />
-        </div>
-        <div style={{ flexShrink: 0 }}>
-          <AddressBar />
-        </div>
+      <div style={{ flexShrink: 0 }}>
+        <TabBar />
+      </div>
+      <div style={{ flexShrink: 0 }}>
+        <AddressBar />
+      </div>
+      {settings.appearance.showBookmarksBar && (
         <div style={{ flexShrink: 0 }}>
           <BookmarkBar />
         </div>
-        <div
-          ref={containerRef}
-          id="browser-view-container"
-          style={{
-            flex: 1,
-            background: 'var(--bg-surface)',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
-          {currentView === 'settings' ? (
-            <ErrorBoundary name="Settings">
-              <SettingsPage />
-            </ErrorBoundary>
-          ) : tabs.length === 0 ? (
-            <HomePage />
-          ) : null}
-        </div>
-        <div style={{ flexShrink: 0 }}>
-          <StatusBar />
-        </div>
+      )}
+      <div
+        ref={containerRef}
+        id="browser-view-container"
+        style={{
+          flex: 1,
+          background: 'var(--bg-surface)',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        {currentView === 'settings' ? (
+          <ErrorBoundary name="Settings">
+            <SettingsPage />
+          </ErrorBoundary>
+        ) : tabs.length === 0 ? (
+          <HomePage />
+        ) : null}
+      </div>
+      <div style={{ flexShrink: 0 }}>
+        <StatusBar />
       </div>
       <ErrorBoundary name="Debug Panel">
         <DebugPanel />
