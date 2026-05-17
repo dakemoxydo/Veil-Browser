@@ -1,0 +1,14 @@
+{
+  "name": "@veil/main",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsc -w",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@veil/shared": "*",
+    "electron": "^42.1.0"
+  }
+}

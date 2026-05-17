@@ -1,0 +1,59 @@
+{
+  "name": "veil-browser",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A modular, beautiful, and secure browser based on Electron and React.",
+  "main": "packages/main/dist/index.js",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "tsc -b",
+    "lint": "npm run lint --workspaces --if-present",
+    "package": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.veil.browser",
+    "productName": "Veil Browser",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "packages/main/dist/**/*",
+      "packages/renderer/dist/**/*",
+      "packages/shared/dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "artifactName": "Veil-Browser-v${version}.${ext}"
+    }
+  },
+  "keywords": [
+    "browser",
+    "electron",
+    "react",
+    "liquid-glass",
+    "privacy"
+  ],
+  "author": "Veil Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "electron": "^42.1.0",
+    "electron-builder": "^26.8.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  },
+  "dependencies": {
+    "electron-chrome-extensions": "^4.9.0",
+    "immer": "^11.1.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^5.0.11"
+  }
+}
