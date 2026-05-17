@@ -6,6 +6,7 @@ describe('StateBroadcaster', () => {
   let broadcaster: StateBroadcaster;
 
   beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (StateBroadcaster as any).instance = undefined;
     broadcaster = StateBroadcaster.getInstance();
   });
@@ -37,6 +38,7 @@ describe('StateBroadcaster', () => {
   });
 
   it('patch deep merges settings', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     broadcaster.patch({ settings: { privacy: { adblockEnabled: false } } as any });
     const settings = broadcaster.getState().settings;
     expect(settings.privacy.adblockEnabled).toBe(false);
@@ -46,6 +48,7 @@ describe('StateBroadcaster', () => {
 
   it('patch sends full state to webContents', () => {
     const mockSend = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockWebContents = { send: mockSend, isDestroyed: () => false } as any;
     broadcaster.setWebContents(mockWebContents);
 
@@ -57,6 +60,7 @@ describe('StateBroadcaster', () => {
 
   it('patch does not send to destroyed webContents', () => {
     const mockSend = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockWebContents = { send: mockSend, isDestroyed: () => true } as any;
     broadcaster.setWebContents(mockWebContents);
 

@@ -1,5 +1,4 @@
 import { app, ipcMain, globalShortcut, BrowserWindow } from 'electron';
-import * as path from 'path';
 import { VeilWindow } from './core/VeilWindow';
 import { DebugWindow } from './core/DebugWindow';
 import { ServiceRegistry } from './core/ServiceRegistry';

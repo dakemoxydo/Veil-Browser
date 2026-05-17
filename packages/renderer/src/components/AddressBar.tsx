@@ -11,15 +11,16 @@ export const AddressBar: React.FC = () => {
   const settings = useVeilStore((s) => s.settings);
   const dispatch = useVeilStore((s) => s.dispatch);
 
+  // Sync URL from active tab to input value
   useEffect(() => {
     if (activeTab) {
       setValue(activeTab.url);
     }
-  }, [activeTabId, activeTab?.url]);
+  }, [activeTabId, activeTab]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && activeTabId) {
-      let url = value.trim();
+      const url = value.trim();
       if (!url) return;
       const dangerous = ['file://', 'data:', 'javascript:', 'chrome://', 'chrome-extension://'];
       if (dangerous.some(prefix => url.toLowerCase().startsWith(prefix))) return;

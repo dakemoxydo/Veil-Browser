@@ -6,6 +6,7 @@ describe('EventBus', () => {
 
   beforeEach(() => {
     // Reset singleton
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (EventBus as any).instance = undefined;
     bus = EventBus.getInstance();
   });

@@ -59,7 +59,7 @@ export class ErrorHandler {
       ? console.error
       : severity === ErrorSeverity.MEDIUM
       ? console.warn
-      : console.log;
+      : console.info;
 
     logMethod(`[${source}] ${code}: ${message}`, context || '');
 

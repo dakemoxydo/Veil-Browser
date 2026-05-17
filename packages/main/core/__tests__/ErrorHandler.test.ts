@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ErrorHandler, ErrorSeverity } from '../ErrorHandler';
 
 describe('ErrorHandler', () => {
   let handler: ErrorHandler;
 
   beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (ErrorHandler as any).instance = undefined;
     handler = ErrorHandler.getInstance();
   });

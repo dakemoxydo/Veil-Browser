@@ -47,7 +47,7 @@ export class Logger {
         console.debug(`${prefix} ${message}`, data !== undefined ? data : '');
         break;
       case LogLevel.INFO:
-        console.log(`${prefix} ${message}`, data !== undefined ? data : '');
+        console.info(`${prefix} ${message}`, data !== undefined ? data : '');
         break;
       case LogLevel.WARN:
         console.warn(`${prefix} ${message}`, data !== undefined ? data : '');

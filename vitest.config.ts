@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
+import { resolve } from 'path';
 
 export default defineConfig({
   test: {
@@ -10,7 +10,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@veil/shared': path.resolve(__dirname, 'packages/shared/index.ts'),
+      '@veil/shared': resolve(__dirname, 'packages/shared/index.ts'),
     },
   },
 });

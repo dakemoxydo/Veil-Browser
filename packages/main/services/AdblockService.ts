@@ -3,7 +3,7 @@ import { VeilService } from '../core/ServiceRegistry';
 import { VeilAction } from '@veil/shared';
 import { StateBroadcaster } from '../core/StateBroadcaster';
 import { Logger } from '../core/Logger';
-import { ErrorHandler, ErrorSeverity } from '../core/ErrorHandler';
+import { ErrorHandler } from '../core/ErrorHandler';
 
 interface SettingsServiceLike {
   getSettings(): { privacy: { adblockEnabled: boolean } };

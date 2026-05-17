@@ -68,7 +68,7 @@ export class ExtensionService implements VeilService {
         });
       }
 
-      console.log('[Veil] ExtensionService initialized');
+      console.info('[Veil] ExtensionService initialized');
     } catch (error) {
       console.warn('[Veil] Failed to load electron-chrome-extensions:', error);
     }
@@ -86,7 +86,7 @@ export class ExtensionService implements VeilService {
         }
         try {
           await session.defaultSession.loadExtension(extPath);
-          console.log(`[Veil] Extension loaded from: ${extPath}`);
+          console.info(`[Veil] Extension loaded from: ${extPath}`);
         } catch (error) {
           console.error(`[Veil] Failed to load extension:`, error);
         }
