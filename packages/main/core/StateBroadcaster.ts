@@ -45,10 +45,13 @@ export class StateBroadcaster {
       privacyStats: patch.privacyStats
         ? { ...this.state.privacyStats, ...patch.privacyStats }
         : this.state.privacyStats,
+      settings: patch.settings
+        ? { ...this.state.settings, ...patch.settings, general: { ...this.state.settings.general, ...patch.settings.general }, privacy: { ...this.state.settings.privacy, ...patch.settings.privacy }, appearance: { ...this.state.settings.appearance, ...patch.settings.appearance } }
+        : this.state.settings,
     };
     if (this.webContents && !this.webContents.isDestroyed()) {
       try {
-        this.webContents.send('veil:state-patch', patch);
+        this.webContents.send('veil:state-patch', this.state);
       } catch (error) {
         this.errorHandler.handle(
           'STATE_BROADCAST_FAILED',

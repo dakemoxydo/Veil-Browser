@@ -4,11 +4,21 @@ import { app } from 'electron';
 import { ErrorHandler, ErrorSeverity } from '../../core/ErrorHandler';
 
 export class PersistenceService {
+  private static instances: PersistenceService[] = [];
   private dataDir: string;
   private errorHandler: ErrorHandler;
-  private saveTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  private pendingSaves: Map<string, { timer: ReturnType<typeof setTimeout>; data: unknown }> = new Map();
+
+  public static flushAll(): void {
+    for (const instance of PersistenceService.instances) {
+      instance.flush();
+    }
+  }
 
   constructor() {
+    if (!PersistenceService.instances.includes(this)) {
+      PersistenceService.instances.push(this);
+    }
     this.dataDir = path.join(app.getPath('userData'), 'VeilBrowser');
     this.errorHandler = ErrorHandler.getInstance();
     this.ensureDataDir();
@@ -49,26 +59,40 @@ export class PersistenceService {
   }
 
   public save(filename: string, data: unknown): void {
-    // Debounce saves
-    const existingTimer = this.saveTimers.get(filename);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
+    const existing = this.pendingSaves.get(filename);
+    if (existing) {
+      clearTimeout(existing.timer);
     }
 
-    this.saveTimers.set(filename, setTimeout(() => {
-      this.saveTimers.delete(filename);
-      try {
-        const filePath = path.join(this.dataDir, filename);
-        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-      } catch (error) {
-        this.errorHandler.handle(
-          'PERSISTENCE_SAVE_FAILED',
-          `Failed to save ${filename}: ${error}`,
-          ErrorSeverity.MEDIUM,
-          'PersistenceService'
-        );
-      }
-    }, 500));
+    this.pendingSaves.set(filename, {
+      data,
+      timer: setTimeout(() => {
+        this.pendingSaves.delete(filename);
+        this.writeSync(filename, data);
+      }, 500),
+    });
+  }
+
+  private writeSync(filename: string, data: unknown): void {
+    try {
+      const filePath = path.join(this.dataDir, filename);
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error) {
+      this.errorHandler.handle(
+        'PERSISTENCE_SAVE_FAILED',
+        `Failed to save ${filename}: ${error}`,
+        ErrorSeverity.MEDIUM,
+        'PersistenceService'
+      );
+    }
+  }
+
+  public flush(): void {
+    for (const [filename, { timer, data }] of this.pendingSaves.entries()) {
+      clearTimeout(timer);
+      this.writeSync(filename, data);
+    }
+    this.pendingSaves.clear();
   }
 
   public exists(filename: string): boolean {

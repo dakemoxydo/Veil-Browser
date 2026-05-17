@@ -1,4 +1,4 @@
-import { app, shell, session, DownloadItem as ElectronDownloadItem } from 'electron';
+import { app, shell, session, DownloadItem as ElectronDownloadItem, Event as ElectronEvent } from 'electron';
 import { VeilService } from '../../core/ServiceRegistry';
 import { VeilAction, DownloadItem } from '@veil/shared';
 import { EventBus, EventTypes } from '../../core/EventBus';
@@ -40,7 +40,7 @@ export class NewDownloadService implements VeilService {
 
   private setupDownloadListener() {
     const defaultSession = session.defaultSession;
-    defaultSession.on('will-download', (_event: any, item: any) => {
+    defaultSession.on('will-download', (_event: ElectronEvent, item: ElectronDownloadItem) => {
       const downloadId = randomUUID();
       const downloadPath = app.getPath('downloads');
 
@@ -61,7 +61,7 @@ export class NewDownloadService implements VeilService {
 
       item.setSavePath(`${downloadPath}/${item.getFilename()}`);
 
-      item.on('updated', (_event: any, state: any) => {
+      item.on('updated', (_event: ElectronEvent, state: string) => {
         if (state === 'progressing') {
           const existing = this.downloads.find(d => d.id === downloadId);
           if (existing) {
@@ -75,7 +75,7 @@ export class NewDownloadService implements VeilService {
         }
       });
 
-      item.once('done', (_event: any, state: any) => {
+      item.once('done', (_event: ElectronEvent, state: string) => {
         const existing = this.downloads.find(d => d.id === downloadId);
         if (existing) {
           if (state === 'completed') {

@@ -29,8 +29,17 @@ export class NewHistoryService implements VeilService {
 
   private setupEventListeners(): void {
     // Record history when tab navigates
-    this.eventBus.on(EventTypes.TAB_NAVIGATED, (data: { id: string; url: string }) => {
-      this.addEntry(data.url, data.url);
+    this.eventBus.on(EventTypes.TAB_NAVIGATED, (data: { id: string; url: string; title?: string }) => {
+      this.addEntry(data.url, data.title || data.url);
+    });
+
+    // Update history entry title when page title becomes available
+    this.eventBus.on(EventTypes.TAB_TITLE_CHANGED, (data: { id: string; title: string }) => {
+      const activeTab = this.history.find(h => h.title === h.url);
+      if (activeTab) {
+        activeTab.title = data.title;
+        this.save();
+      }
     });
   }
 

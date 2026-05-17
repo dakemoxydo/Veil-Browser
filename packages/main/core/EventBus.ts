@@ -1,13 +1,14 @@
-export type EventHandler<T = any> = (data: T) => void | Promise<void>;
+export type EventHandler<T = unknown> = (data: T) => void | Promise<void>;
 
 export interface DomainEvent {
   type: string;
-  payload: any;
+  payload: unknown;
   timestamp: number;
 }
 
 export class EventBus {
   private static instance: EventBus;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handlers = new Map<string, Set<EventHandler<any>>>();
   private eventHistory: DomainEvent[] = [];
   private maxHistorySize = 1000;
@@ -108,6 +109,7 @@ export const EventTypes = {
   TAB_CLOSED: 'tab:closed',
   TAB_FOCUSED: 'tab:focused',
   TAB_NAVIGATED: 'tab:navigated',
+  TAB_TITLE_CHANGED: 'tab:title-changed',
   TAB_LOADING: 'tab:loading',
 
   // Navigation events

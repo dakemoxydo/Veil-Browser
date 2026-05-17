@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useVeilStore } from '../store/useVeilStore';
 
 export const BookmarkBar: React.FC = () => {
   const bookmarks = useVeilStore((s) => s.bookmarks);
   const dispatch = useVeilStore((s) => s.dispatch);
-  const activeTab = useVeilStore((s) => s.tabs.find(t => t.id === s.activeTabId));
+  const tabs = useVeilStore((s) => s.tabs);
+  const activeTabId = useVeilStore((s) => s.activeTabId);
+  const activeTab = useMemo(() => tabs.find(t => t.id === activeTabId), [tabs, activeTabId]);
   const settings = useVeilStore((s) => s.settings);
 
   if (!settings.appearance.showBookmarksBar || bookmarks.length === 0) return null;

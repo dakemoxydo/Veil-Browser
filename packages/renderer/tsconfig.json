@@ -7,7 +7,7 @@
     "module": "ESNext",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node", "react", "react-dom", "vite/client"]
+    "types": ["react", "react-dom", "vite/client"]
   },
   "include": ["src"],
   "references": [{ "path": "../shared" }]

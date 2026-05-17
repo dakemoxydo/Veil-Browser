@@ -1,11 +1,13 @@
 import { create } from 'zustand';
-import { VeilState, VeilAction, LogEntry, LogLevel, BookmarkItem, DownloadItem, VeilSettings, DEFAULT_SETTINGS } from '@veil/shared';
+import { VeilState, VeilAction, LogEntry, LogLevel, DEFAULT_SETTINGS } from '@veil/shared';
 
 interface VeilStore extends VeilState {
   dispatch: (action: VeilAction) => void;
   applyPatch: (patch: Partial<VeilState>) => void;
   addLog: (level: LogLevel, source: string, message: string, data?: unknown) => void;
   clearLogs: () => void;
+  currentView: 'browser' | 'settings';
+  setView: (view: 'browser' | 'settings') => void;
 }
 
 const MAX_LOGS = 500;
@@ -22,6 +24,9 @@ export const useVeilStore = create<VeilStore>((set, get) => ({
   downloads: [],
   settings: { ...DEFAULT_SETTINGS },
 
+  currentView: 'browser',
+  setView: (view) => set({ currentView: view }),
+
   dispatch: (action) => {
     get().addLog('ACTION', 'Store', `Action: ${action.type}`, action.payload);
     if (window.veil) {
@@ -29,13 +34,13 @@ export const useVeilStore = create<VeilStore>((set, get) => ({
     }
   },
 
-  applyPatch: (patch) => {
+  applyPatch: (fullState) => {
     set((state) => ({
       ...state,
-      ...patch,
-      privacyStats: patch.privacyStats
-        ? { ...state.privacyStats, ...patch.privacyStats }
-        : state.privacyStats,
+      ...fullState,
+      // Preserve local-only fields
+      currentView: state.currentView,
+      logs: state.logs,
     }));
   },
 
@@ -65,18 +70,15 @@ export const initVeilStore = async () => {
   }
 
   const initialState = await window.veil.getState();
-  useVeilStore.getState().applyPatch(initialState);
+  if (initialState) {
+    useVeilStore.getState().applyPatch(initialState);
+  }
 
   const patchCleanup = window.veil.onStatePatch((patch: Partial<VeilState>) => {
     useVeilStore.getState().applyPatch(patch);
   });
 
-  const localLogsCleanup = window.veil.onLog((log: LogEntry) => {
-    useVeilStore.getState().addLog(log.level, log.source, log.message, log.data);
-  });
-
   return () => {
     patchCleanup();
-    localLogsCleanup();
   };
 };

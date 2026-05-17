@@ -56,7 +56,17 @@ export class ServiceRegistry {
     });
 
     ipcMain.handle('veil:get-state', () => {
-      return StateBroadcaster.getInstance().getState();
+      try {
+        return StateBroadcaster.getInstance().getState();
+      } catch (error) {
+        this.errorHandler.handle(
+          'GET_STATE_FAILED',
+          String(error),
+          ErrorSeverity.MEDIUM,
+          'ServiceRegistry'
+        );
+        return null;
+      }
     });
 
     for (const service of this.services.values()) {

@@ -13,7 +13,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    target: 'chrome120',
+    target: 'chrome134',
     sourcemap: true,
   },
   server: {

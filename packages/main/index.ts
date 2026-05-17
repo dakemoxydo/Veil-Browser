@@ -3,13 +3,14 @@ import * as path from 'path';
 import { VeilWindow } from './core/VeilWindow';
 import { DebugWindow } from './core/DebugWindow';
 import { ServiceRegistry } from './core/ServiceRegistry';
-import { Logger, LogLevel } from './core/Logger';
+import { Logger } from './core/Logger';
 import { ConfigManager } from './core/AppConfig';
 import { NewTabService } from './application/services/NewTabService';
 import { NewBookmarkService } from './application/services/NewBookmarkService';
 import { NewHistoryService } from './application/services/NewHistoryService';
 import { NewDownloadService } from './application/services/NewDownloadService';
 import { NewSettingsService } from './application/services/NewSettingsService';
+import { PersistenceService } from './application/services/PersistenceService';
 import { ExtensionService } from './services/ExtensionService';
 import { AdblockService } from './services/AdblockService';
 import { ContextMenuService } from './services/ContextMenuService';
@@ -106,9 +107,7 @@ function registerIpcHandlers() {
         message: log.message,
         data: log.data,
       };
-      if (mainWindow?.window && !mainWindow.window.isDestroyed()) {
-        mainWindow.getWebContents().send('veil:log', logEntry);
-      }
+      // Only send to debug window — renderer already has this log locally
       if (debugWindow?.window && !debugWindow.window.isDestroyed()) {
         debugWindow.getWebContents()?.send('veil:log', logEntry);
       }
@@ -223,6 +222,11 @@ function registerShortcuts() {
   });
 }
 
+// Flush pending saves before quitting
+app.on('before-quit', () => {
+  PersistenceService.flushAll();
+});
+
 // Main window closed → quit the app (close debug window too)
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
@@ -240,6 +244,11 @@ app.on('activate', () => {
   if (process.platform === 'darwin' && !mainWindow) {
     bootstrap();
   }
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', error);
+  PersistenceService.flushAll();
 });
 
 process.on('unhandledRejection', (reason) => {

@@ -30,7 +30,7 @@ export class NewTabService implements VeilService {
 
   private setupEventListeners(): void {
     // Listen for navigation events from other services
-    this.eventBus.on(EventTypes.TAB_NAVIGATED, (data: { id: string; url: string }) => {
+    this.eventBus.on(EventTypes.TAB_NAVIGATED, (data: { id: string; url: string; title?: string }) => {
       this.logger.debug(`Tab navigated: ${data.id} -> ${data.url}`);
     });
   }
@@ -43,7 +43,7 @@ export class NewTabService implements VeilService {
   }
 
   private getHomepage(): string {
-    return 'https://duckduckgo.com';
+    return this.stateBroadcaster.getState().settings.general.homepage;
   }
 
   public getActiveTabId(): string | null {
@@ -206,6 +206,7 @@ export class NewTabService implements VeilService {
       if (tab) {
         tab.title = title;
         this.broadcastState();
+        this.eventBus.emit(EventTypes.TAB_TITLE_CHANGED, { id: tabId, title });
       }
     });
 

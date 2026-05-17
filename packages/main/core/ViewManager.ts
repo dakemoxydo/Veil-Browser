@@ -1,4 +1,4 @@
-import { WebContentsView, BaseWindow } from 'electron';
+import { WebContentsView, BaseWindow, app } from 'electron';
 import * as path from 'path';
 
 export class ViewManager {
@@ -18,10 +18,13 @@ export class ViewManager {
   }
 
   public createView(id: string, url: string): WebContentsView {
-    const preloadPath = path.join(__dirname, '../preload.js');
+    const preloadPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'app.asar', 'packages', 'main', 'dist', 'preload.js')
+      : path.join(__dirname, '../preload.js');
 
     const view = new WebContentsView({
       webPreferences: {
+        contextIsolation: true,
         sandbox: true,
         preload: preloadPath,
       }

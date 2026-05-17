@@ -1,6 +1,6 @@
-import { Menu, MenuItem, BaseWindow, clipboard } from 'electron';
+import { Menu, MenuItem, BaseWindow, clipboard, app } from 'electron';
 import { VeilService } from '../core/ServiceRegistry';
-import { VeilAction, getSearchUrl } from '@veil/shared';
+import { VeilAction, SearchEngine, getSearchUrl } from '@veil/shared';
 import { Logger } from '../core/Logger';
 
 interface TabServiceLike {
@@ -8,7 +8,7 @@ interface TabServiceLike {
 }
 
 interface SettingsServiceLike {
-  getSettings(): { general: { searchEngine: string; customSearchUrl: string } };
+  getSettings(): { general: { searchEngine: SearchEngine; customSearchUrl: string } };
 }
 
 export class ContextMenuService implements VeilService {
@@ -24,6 +24,10 @@ export class ContextMenuService implements VeilService {
   }
 
   public async init() {
+    // Auto-register context menu on all new webContents (tabs, etc.)
+    app.on('web-contents-created', (_, webContents) => {
+      this.registerTabContextMenu(webContents);
+    });
     this.logger.info('ContextMenuService initialized');
   }
 
@@ -74,7 +78,7 @@ export class ContextMenuService implements VeilService {
         click: () => clipboard.writeText(params.selectionText),
       }));
       const settings = this.settingsService.getSettings();
-      const searchUrl = getSearchUrl(params.selectionText, settings.general.searchEngine as any, settings.general.customSearchUrl);
+      const searchUrl = getSearchUrl(params.selectionText, settings.general.searchEngine, settings.general.customSearchUrl);
       menu.append(new MenuItem({
         label: `Search for "${params.selectionText.slice(0, 30)}${params.selectionText.length > 30 ? '...' : ''}"`,
         click: () => this.tabService.handleAction({

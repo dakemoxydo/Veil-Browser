@@ -5,17 +5,12 @@ export class DebugWindow {
   private static instance: DebugWindow | null = null;
   public window: BaseWindow | null = null;
   private webView: WebContentsView | null = null;
-  private onCloseCallback: (() => void) | null = null;
 
   public static getInstance(): DebugWindow {
     if (!DebugWindow.instance) {
       DebugWindow.instance = new DebugWindow();
     }
     return DebugWindow.instance;
-  }
-
-  public onClose(callback: () => void): void {
-    this.onCloseCallback = callback;
   }
 
   public create(): BaseWindow {
@@ -80,9 +75,6 @@ export class DebugWindow {
     this.window.on('closed', () => {
       this.window = null;
       this.webView = null;
-      if (this.onCloseCallback) {
-        this.onCloseCallback();
-      }
     });
 
     return this.window;

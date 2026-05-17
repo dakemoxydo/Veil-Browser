@@ -42,14 +42,6 @@ export class Logger {
     const levelName = LogLevel[level];
     const prefix = `[${timestamp}] [${levelName}] [${this.source}]`;
 
-    const logEntry = {
-      timestamp,
-      level: levelName,
-      source: this.source,
-      message,
-      data,
-    };
-
     switch (level) {
       case LogLevel.DEBUG:
         console.debug(`${prefix} ${message}`, data !== undefined ? data : '');
@@ -66,7 +58,7 @@ export class Logger {
     }
 
     // Emit to EventBus for debug window
-    this.eventBus.emit(EventTypes.DEBUG_LOG, logEntry);
+    this.eventBus.emit(EventTypes.DEBUG_LOG, { timestamp, level: levelName, source: this.source, message, data });
   }
 
   public child(subSource: string): Logger {

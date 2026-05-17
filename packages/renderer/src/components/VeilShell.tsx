@@ -6,13 +6,37 @@ import { AddressBar } from './AddressBar';
 import { BookmarkBar } from './BookmarkBar';
 import { StatusBar } from './StatusBar';
 import { HomePage } from './HomePage';
-import { DownloadPanel } from './DownloadPanel';
 import { Sidebar } from './Sidebar';
+import { DebugPanel } from './DebugPanel';
+import { SettingsPage } from './SettingsPage';
 
 export const VeilShell: React.FC = () => {
   const settings = useVeilStore((s) => s.settings);
   const tabs = useVeilStore((s) => s.tabs);
+  const activeTabId = useVeilStore((s) => s.activeTabId);
+  const dispatch = useVeilStore((s) => s.dispatch);
+  const currentView = useVeilStore((s) => s.currentView);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Listen for keyboard shortcuts from main process
+  useEffect(() => {
+    if (!window.veil?.onShortcut) return;
+    const cleanup = window.veil.onShortcut((shortcut) => {
+      switch (shortcut) {
+        case 'close-tab':
+          if (activeTabId) {
+            dispatch({ type: 'TAB_CLOSE', payload: { id: activeTabId } });
+          }
+          break;
+        case 'reload':
+          if (activeTabId) {
+            dispatch({ type: 'TAB_RELOAD', payload: { id: activeTabId } });
+          }
+          break;
+      }
+    });
+    return cleanup;
+  }, [activeTabId, dispatch]);
 
   useEffect(() => {
     const updateOffset = () => {
@@ -75,17 +99,22 @@ export const VeilShell: React.FC = () => {
           id="browser-view-container"
           style={{
             flex: 1,
-            background: '#FFFFFF',
+            background: 'var(--bg-surface)',
             overflow: 'hidden',
             position: 'relative',
           }}
         >
-          {tabs.length === 0 && <HomePage />}
+          {currentView === 'settings' ? (
+            <SettingsPage />
+          ) : tabs.length === 0 ? (
+            <HomePage />
+          ) : null}
         </div>
         <div style={{ flexShrink: 0 }}>
           <StatusBar />
         </div>
       </div>
+      <DebugPanel />
     </div>
   );
 };

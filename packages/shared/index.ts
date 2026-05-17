@@ -138,9 +138,8 @@ export interface IPCResult {
 
 export interface VeilAPI {
   dispatch: (action: VeilAction) => Promise<void>;
-  getState: () => Promise<VeilState>;
+  getState: () => Promise<VeilState | null>;
   onStatePatch: (cb: (patch: Partial<VeilState>) => void) => () => void;
-  onLog: (cb: (log: LogEntry) => void) => () => void;
   addLog: (level: LogLevel, source: string, message: string, data?: unknown) => Promise<void>;
   minimize: () => Promise<IPCResult>;
   maximize: () => Promise<IPCResult>;
@@ -148,6 +147,7 @@ export interface VeilAPI {
   openDebugWindow: () => Promise<IPCResult>;
   closeDebugWindow: () => Promise<IPCResult>;
   setShellOffset: (offset: number) => Promise<IPCResult>;
+  onShortcut: (cb: (shortcut: string) => void) => () => void;
 }
 
 declare global {

@@ -6,7 +6,8 @@ import * as fs from 'fs';
 
 export class ExtensionService implements VeilService {
   public name = 'ExtensionService';
-  private extensions: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extensions: any = null; // electron-chrome-extensions has no types
   private webContentsListenerRegistered = false;
 
   constructor(private window: BaseWindow) {}
