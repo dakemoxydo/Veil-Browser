@@ -87,6 +87,15 @@ export class ViewManager {
     }
   }
 
+  public showAllViews() {
+    for (const [id, view] of this.views.entries()) {
+      if (this.hiddenViews.has(id)) {
+        this.window.contentView.addChildView(view);
+        this.hiddenViews.delete(id);
+      }
+    }
+  }
+
   public closeView(id: string) {
     const view = this.views.get(id);
     if (view) {

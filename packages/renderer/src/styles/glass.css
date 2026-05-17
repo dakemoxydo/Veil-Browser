@@ -1,5 +1,14 @@
 /* Chrome-like Component Styles */
 
+/* Drag regions */
+.drag, .tab-bar-container {
+  -webkit-app-region: drag;
+}
+
+.no-drag, .tab-item, .toolbar-btn, .nav-btn, .omnibox, .window-controls button {
+  -webkit-app-region: no-drag;
+}
+
 /* Tab styles */
 .tab-item {
   display: flex;

@@ -145,6 +145,7 @@ export interface VeilAPI {
   openDebugWindow: () => Promise<IPCResult>;
   closeDebugWindow: () => Promise<IPCResult>;
   setShellOffset: (offset: number) => Promise<IPCResult>;
+  setViewMode: (mode: 'browser' | 'settings') => Promise<IPCResult>;
   onShortcut: (cb: (shortcut: string) => void) => () => void;
 }
 

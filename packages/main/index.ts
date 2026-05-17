@@ -127,6 +127,22 @@ function registerIpcHandlers() {
       return { success: false, error: String(error) };
     }
   });
+
+  ipcMain.handle('veil:set-view-mode', async (_, mode: 'browser' | 'settings') => {
+    try {
+      if (mainWindow?.viewManager) {
+        if (mode === 'settings') {
+          mainWindow.viewManager.hideAllViews();
+        } else {
+          mainWindow.viewManager.showAllViews();
+        }
+        return { success: true };
+      }
+      return { success: false, error: 'ViewManager not available' };
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
+  });
 }
 
 async function bootstrap() {

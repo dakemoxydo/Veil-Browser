@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('veil', {
   openDebugWindow: (): Promise<IPCResult> => ipcRenderer.invoke('veil:open-debug'),
   closeDebugWindow: (): Promise<IPCResult> => ipcRenderer.invoke('veil:close-debug'),
   setShellOffset: (offset: number): Promise<IPCResult> => ipcRenderer.invoke('veil:set-shell-offset', offset),
+  setViewMode: (mode: 'browser' | 'settings'): Promise<IPCResult> => ipcRenderer.invoke('veil:set-view-mode', mode),
   onShortcut: (cb: (shortcut: string) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, shortcut: string) => cb(shortcut);
     ipcRenderer.on('veil:shortcut', listener);

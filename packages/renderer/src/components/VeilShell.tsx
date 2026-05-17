@@ -37,6 +37,14 @@ export const VeilShell: React.FC = () => {
     return cleanup;
   }, [activeTabId, dispatch]);
 
+  // Hide/show WebContentsViews when switching between browser and settings
+  useEffect(() => {
+    if (window.veil?.setViewMode) {
+      window.veil.setViewMode(currentView);
+    }
+  }, [currentView]);
+
+  // Update shell offset for ViewManager positioning
   useEffect(() => {
     const updateOffset = () => {
       if (containerRef.current && window.veil) {
@@ -89,7 +97,7 @@ export const VeilShell: React.FC = () => {
         style={{
           flex: 1,
           background: 'var(--bg-surface)',
-          overflow: 'hidden',
+          overflow: currentView === 'settings' ? 'auto' : 'hidden',
           position: 'relative',
         }}
       >
