@@ -1,38 +1,25 @@
 import { create } from 'zustand';
-import { VeilState, VeilAction, LogEntry, LogLevel, DEFAULT_SETTINGS } from '@veil/shared';
+import { VeilState } from '@veil/shared';
+import { TabSlice, createTabSlice, selectActiveTab } from './slices/tabSlice';
+import { BookmarkSlice, createBookmarkSlice } from './slices/bookmarkSlice';
+import { DownloadSlice, createDownloadSlice } from './slices/downloadSlice';
+import { SettingsSlice, createSettingsSlice } from './slices/settingsSlice';
+import { DebugSlice, createDebugSlice } from './slices/debugSlice';
+import { ActionSlice, createActionSlice } from './slices/actionSlice';
+import { ViewSlice, createViewSlice } from './slices/viewSlice';
 
-interface VeilStore extends VeilState {
-  dispatch: (action: VeilAction) => void;
+export type VeilStore = TabSlice & BookmarkSlice & DownloadSlice & SettingsSlice & DebugSlice & ActionSlice & ViewSlice & {
   applyPatch: (patch: Partial<VeilState>) => void;
-  addLog: (level: LogLevel, source: string, message: string, data?: unknown) => void;
-  clearLogs: () => void;
-  currentView: 'browser' | 'settings';
-  setView: (view: 'browser' | 'settings') => void;
-}
+};
 
-const MAX_LOGS = 500;
-
-export const useVeilStore = create<VeilStore>((set, get) => ({
-  tabs: [],
-  activeTabId: null,
-  privacyStats: {
-    blockedTotal: 0,
-    blockedCurrent: 0,
-  },
-  logs: [],
-  bookmarks: [],
-  downloads: [],
-  settings: { ...DEFAULT_SETTINGS },
-
-  currentView: 'browser',
-  setView: (view) => set({ currentView: view }),
-
-  dispatch: (action) => {
-    get().addLog('ACTION', 'Store', `Action: ${action.type}`, action.payload);
-    if (window.veil) {
-      window.veil.dispatch(action);
-    }
-  },
+export const useVeilStore = create<VeilStore>()((set, get, store) => ({
+  ...createTabSlice(set, get, store),
+  ...createBookmarkSlice(set, get, store),
+  ...createDownloadSlice(set, get, store),
+  ...createSettingsSlice(set, get, store),
+  ...createDebugSlice(set, get, store),
+  ...createActionSlice(set, get, store),
+  ...createViewSlice(set, get, store),
 
   applyPatch: (fullState) => {
     set((state) => ({
@@ -43,25 +30,10 @@ export const useVeilStore = create<VeilStore>((set, get) => ({
       logs: state.logs,
     }));
   },
-
-  addLog: (level, source, message, data) => {
-    const entry: LogEntry = {
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      level,
-      source,
-      message,
-      data,
-    };
-    set((state) => ({
-      logs: [...state.logs.slice(-MAX_LOGS + 1), entry],
-    }));
-  },
-
-  clearLogs: () => {
-    set({ logs: [] });
-  },
 }));
+
+// Re-export selectors
+export { selectActiveTab };
 
 export const initVeilStore = async () => {
   if (!window.veil) {

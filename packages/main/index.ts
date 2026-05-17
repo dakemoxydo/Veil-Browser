@@ -7,6 +7,9 @@ import { EventBus } from './core/EventBus';
 import { ErrorHandler } from './core/ErrorHandler';
 import { StateBroadcaster } from './core/StateBroadcaster';
 import { ConfigManager } from './core/AppConfig';
+import { ActionValidator } from './core/ActionValidator';
+import { RateLimiter } from './core/RateLimiter';
+import { ActionDispatcher } from './core/ActionDispatcher';
 import { NewTabService } from './application/services/NewTabService';
 import { NewBookmarkService } from './application/services/NewBookmarkService';
 import { NewHistoryService } from './application/services/NewHistoryService';
@@ -31,10 +34,20 @@ const config = ConfigManager.getInstance();
 const logger = new Logger('Main', eventBus);
 const persistence = new PersistenceService(errorHandler);
 
+const actionValidator = new ActionValidator();
+const rateLimiter = new RateLimiter();
+const actionDispatcher = new ActionDispatcher(
+  new Logger('ActionDispatcher', eventBus),
+  errorHandler
+);
+
 const registry = new ServiceRegistry(
   new Logger('ServiceRegistry', eventBus),
   errorHandler,
   stateBroadcaster,
+  actionValidator,
+  rateLimiter,
+  actionDispatcher,
 );
 
 let mainWindow: VeilWindow | null = null;

@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useVeilStore } from '../store/useVeilStore';
+import React, { useState, useEffect } from 'react';
+import { useVeilStore, selectActiveTab } from '../store/useVeilStore';
 import { getSearchUrl } from '@veil/shared';
 import { DownloadPanel } from './DownloadPanel';
 
 export const AddressBar: React.FC = () => {
   const [value, setValue] = useState('');
-  const tabs = useVeilStore((s) => s.tabs);
+  const activeTab = useVeilStore(selectActiveTab);
   const activeTabId = useVeilStore((s) => s.activeTabId);
-  const activeTab = useMemo(() => tabs.find(t => t.id === activeTabId), [tabs, activeTabId]);
   const settings = useVeilStore((s) => s.settings);
   const dispatch = useVeilStore((s) => s.dispatch);
 

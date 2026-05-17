@@ -2,34 +2,9 @@ import { ipcMain } from 'electron';
 import { VeilAction } from '@veil/shared';
 import { ErrorSeverity } from './ErrorHandler';
 import { ILogger, IErrorHandler, IStateBroadcaster } from './interfaces';
-
-const VALID_ACTION_TYPES = new Set([
-  'TAB_NEW', 'TAB_CLOSE', 'TAB_NAVIGATE', 'TAB_FOCUS',
-  'TAB_GO_BACK', 'TAB_GO_FORWARD', 'TAB_RELOAD', 'TAB_GO_HOME',
-  'EXT_LOAD_UNPACKED', 'EXT_DIALOG_OPEN', 'ADBLOCK_TOGGLE',
-  'BOOKMARK_ADD', 'BOOKMARK_REMOVE', 'HISTORY_CLEAR',
-  'DOWNLOAD_CANCEL', 'DOWNLOAD_OPEN', 'DOWNLOAD_SHOW_IN_FOLDER',
-  'SETTINGS_UPDATE',
-]);
-
-const ACTIONS_REQUIRING_ID = new Set([
-  'TAB_CLOSE', 'TAB_NAVIGATE', 'TAB_FOCUS', 'TAB_GO_BACK',
-  'TAB_GO_FORWARD', 'TAB_RELOAD', 'TAB_GO_HOME',
-  'DOWNLOAD_CANCEL', 'DOWNLOAD_OPEN', 'DOWNLOAD_SHOW_IN_FOLDER',
-  'BOOKMARK_REMOVE',
-]);
-
-function isValidAction(action: unknown): action is VeilAction {
-  if (!action || typeof action !== 'object') return false;
-  const a = action as Record<string, unknown>;
-  if (typeof a.type !== 'string') return false;
-  if (!VALID_ACTION_TYPES.has(a.type)) return false;
-  if (ACTIONS_REQUIRING_ID.has(a.type)) {
-    const payload = a.payload as Record<string, unknown> | undefined;
-    if (!payload || typeof payload.id !== 'string' || payload.id.length === 0) return false;
-  }
-  return true;
-}
+import { ActionValidator } from './ActionValidator';
+import { RateLimiter } from './RateLimiter';
+import { ActionDispatcher } from './ActionDispatcher';
 
 export interface VeilService {
   name: string;
@@ -41,14 +16,13 @@ export class ServiceRegistry {
   private services: Map<string, VeilService> = new Map();
   private initialized = false;
 
-  // Rate limiting for veil:action
-  private actionTimestamps: number[] = [];
-  private static readonly MAX_ACTIONS_PER_SECOND = 100;
-
   constructor(
     private logger: ILogger,
     private errorHandler: IErrorHandler,
     private stateBroadcaster: IStateBroadcaster,
+    private validator: ActionValidator,
+    private rateLimiter: RateLimiter,
+    private dispatcher: ActionDispatcher,
   ) {}
 
   public register(service: VeilService) {
@@ -60,16 +34,6 @@ export class ServiceRegistry {
     return this.services.get(name);
   }
 
-  private checkRateLimit(): boolean {
-    const now = Date.now();
-    this.actionTimestamps = this.actionTimestamps.filter(t => now - t < 1000);
-    if (this.actionTimestamps.length >= ServiceRegistry.MAX_ACTIONS_PER_SECOND) {
-      return false;
-    }
-    this.actionTimestamps.push(now);
-    return true;
-  }
-
   public async initAll() {
     if (this.initialized) {
       this.logger.warn('ServiceRegistry already initialized');
@@ -78,31 +42,17 @@ export class ServiceRegistry {
     this.initialized = true;
 
     ipcMain.handle('veil:action', async (_, action: unknown) => {
-      if (!isValidAction(action)) {
+      if (!this.validator.isValid(action)) {
         this.logger.warn(`Invalid action rejected: ${JSON.stringify(action)}`);
         return;
       }
 
-      if (!this.checkRateLimit()) {
+      if (!this.rateLimiter.check()) {
         this.logger.warn('Rate limit exceeded for veil:action');
         return;
       }
 
-      this.logger.debug(`Action: ${action.type}`);
-      for (const service of this.services.values()) {
-        if (service.handleAction) {
-          try {
-            await service.handleAction(action);
-          } catch (error) {
-            this.errorHandler.handle(
-              'SERVICE_ACTION_FAILED',
-              `Service ${service.name} failed to handle action ${action.type}: ${error}`,
-              ErrorSeverity.MEDIUM,
-              'ServiceRegistry'
-            );
-          }
-        }
-      }
+      await this.dispatcher.dispatch(action, [...this.services.values()]);
     });
 
     ipcMain.handle('veil:get-state', () => {

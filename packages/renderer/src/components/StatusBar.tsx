@@ -1,10 +1,8 @@
-import React, { useMemo } from 'react';
-import { useVeilStore } from '../store/useVeilStore';
+import React from 'react';
+import { useVeilStore, selectActiveTab } from '../store/useVeilStore';
 
 export const StatusBar: React.FC = () => {
-  const tabs = useVeilStore((s) => s.tabs);
-  const activeTabId = useVeilStore((s) => s.activeTabId);
-  const activeTab = useMemo(() => tabs.find(t => t.id === activeTabId), [tabs, activeTabId]);
+  const activeTab = useVeilStore(selectActiveTab);
   const isLoading = activeTab?.isLoading ?? false;
 
   return (
