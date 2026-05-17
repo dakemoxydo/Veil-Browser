@@ -7,6 +7,6 @@
     "module": "CommonJS",
     "moduleResolution": "Node"
   },
-  "include": ["index.ts"],
+  "include": ["index.ts", "domain/**/*.ts"],
   "exclude": ["dist"]
 }

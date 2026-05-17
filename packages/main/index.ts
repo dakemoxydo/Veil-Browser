@@ -16,6 +16,10 @@ import { PersistenceService } from './application/services/PersistenceService';
 import { ExtensionService } from './services/ExtensionService';
 import { AdblockService } from './services/AdblockService';
 import { ContextMenuService } from './services/ContextMenuService';
+import { TabRepository } from './infrastructure/repositories/TabRepository';
+import { BookmarkRepository } from './infrastructure/repositories/BookmarkRepository';
+import { HistoryRepository } from './infrastructure/repositories/HistoryRepository';
+import { SettingsRepository } from './infrastructure/repositories/SettingsRepository';
 import { randomUUID } from 'crypto';
 import { LogLevel as SharedLogLevel } from '@veil/shared';
 
@@ -167,25 +171,31 @@ async function bootstrap() {
 
   registerIpcHandlers();
 
+  // Create repositories
+  const tabRepo = new TabRepository();
+  const bookmarkRepo = new BookmarkRepository(persistence);
+  const historyRepo = new HistoryRepository(persistence);
+  const settingsRepo = new SettingsRepository(persistence);
+
   // Create services with injected dependencies
   const settingsService = new NewSettingsService(
-    eventBus, errorHandler, stateBroadcaster,
-    new Logger('SettingsService', eventBus), persistence
+    settingsRepo, eventBus, errorHandler, stateBroadcaster,
+    new Logger('SettingsService', eventBus)
   );
 
   const tabService = new NewTabService(
-    mainWindow.viewManager, eventBus, errorHandler, stateBroadcaster,
+    tabRepo, mainWindow.viewManager, eventBus, errorHandler, stateBroadcaster,
     new Logger('TabService', eventBus)
   );
 
   const historyService = new NewHistoryService(
-    eventBus, errorHandler,
-    new Logger('HistoryService', eventBus), persistence
+    historyRepo, eventBus, errorHandler,
+    new Logger('HistoryService', eventBus)
   );
 
   const bookmarkService = new NewBookmarkService(
-    eventBus, errorHandler, stateBroadcaster,
-    new Logger('BookmarkService', eventBus), persistence
+    bookmarkRepo, eventBus, errorHandler, stateBroadcaster,
+    new Logger('BookmarkService', eventBus)
   );
 
   const downloadService = new NewDownloadService(

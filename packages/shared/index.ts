@@ -154,3 +154,5 @@ declare global {
     veil: VeilAPI;
   }
 }
+
+export * from './domain';

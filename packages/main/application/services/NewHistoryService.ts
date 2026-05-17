@@ -1,26 +1,23 @@
-import { VeilAction, HistoryEntry } from '@veil/shared';
+import { VeilAction, HistoryEntryModel } from '@veil/shared';
 import { EventTypes } from '../../core/EventBus';
-import { ErrorSeverity } from '../../core/ErrorHandler';
-import { IEventBus, IErrorHandler, ILogger, IPersistenceService } from '../../core/interfaces';
+import { IEventBus, IErrorHandler, ILogger } from '../../core/interfaces';
+import { IHistoryRepository } from '../../core/repositories/IHistoryRepository';
 import { BaseService } from '../../core/BaseService';
-import { randomUUID } from 'crypto';
 
 export class NewHistoryService extends BaseService {
   public name = 'HistoryService';
-  private history: HistoryEntry[] = [];
 
   constructor(
+    private historyRepo: IHistoryRepository,
     eventBus: IEventBus,
     errorHandler: IErrorHandler,
     logger: ILogger,
-    private persistence: IPersistenceService,
   ) {
     super(eventBus, errorHandler, logger);
   }
 
   public async init() {
     this.logger.info('HistoryService initialized');
-    this.load();
     this.setupEventListeners();
   }
 
@@ -31,57 +28,29 @@ export class NewHistoryService extends BaseService {
     });
 
     // Update history entry title when page title becomes available
+    // We need to find the history entry by matching the most recent entry
+    // Since TAB_TITLE_CHANGED only has id and title, we update the last entry
     this.eventBus.on(EventTypes.TAB_TITLE_CHANGED, (data: { id: string; title: string }) => {
-      const activeTab = this.history.find(h => h.title === h.url);
-      if (activeTab) {
-        activeTab.title = data.title;
-        this.save();
+      // The history entry that needs updating is the most recent one
+      const allEntries = this.historyRepo.getAll();
+      if (allEntries.length > 0) {
+        const lastEntry = allEntries[allEntries.length - 1];
+        if (lastEntry.title === lastEntry.url) {
+          this.historyRepo.updateTitle(lastEntry.url, data.title);
+        }
       }
     });
   }
 
-  private load() {
-    try {
-      this.history = this.persistence.load<HistoryEntry[]>('history.json', []);
-    } catch (error) {
-      this.errorHandler.handle(
-        'HISTORY_LOAD_FAILED',
-        String(error),
-        ErrorSeverity.MEDIUM,
-        'HistoryService'
-      );
-      this.history = [];
-    }
-  }
-
-  private save() {
-    this.persistence.save('history.json', this.history);
-  }
-
   public addEntry(url: string, title: string) {
-    const existing = this.history.find(h => h.url === url);
-    if (existing) {
-      existing.timestamp = Date.now();
-    } else {
-      this.history.push({
-        id: randomUUID(),
-        url,
-        title: title || url,
-        timestamp: Date.now(),
-      });
-    }
-    this.save();
+    const entry = HistoryEntryModel.create(url, title || url);
+    this.historyRepo.add(entry);
     this.logger.debug(`History entry added: ${url}`);
   }
 
   public clear() {
-    this.history = [];
-    this.save();
+    this.historyRepo.clear();
     this.logger.info('History cleared');
-  }
-
-  public getHistory(): HistoryEntry[] {
-    return this.history;
   }
 
   public async handleAction(action: VeilAction) {

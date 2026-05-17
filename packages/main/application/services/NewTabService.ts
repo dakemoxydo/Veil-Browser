@@ -1,17 +1,16 @@
-import { VeilAction, TabInfo } from '@veil/shared';
+import { VeilAction, Tab } from '@veil/shared';
 import { ViewManager } from '../../core/ViewManager';
 import { EventTypes } from '../../core/EventBus';
 import { ErrorSeverity } from '../../core/ErrorHandler';
 import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger } from '../../core/interfaces';
+import { ITabRepository } from '../../core/repositories/ITabRepository';
 import { BaseService } from '../../core/BaseService';
-import { randomUUID } from 'crypto';
 
 export class NewTabService extends BaseService {
   public name = 'TabService';
-  private tabs: TabInfo[] = [];
-  private activeTabId: string | null = null;
 
   constructor(
+    private tabRepo: ITabRepository,
     private viewManager: ViewManager,
     eventBus: IEventBus,
     errorHandler: IErrorHandler,
@@ -27,7 +26,6 @@ export class NewTabService extends BaseService {
   }
 
   private setupEventListeners(): void {
-    // Listen for navigation events from other services
     this.eventBus.on(EventTypes.TAB_NAVIGATED, (data: { id: string; url: string; title?: string }) => {
       this.logger.debug(`Tab navigated: ${data.id} -> ${data.url}`);
     });
@@ -35,8 +33,8 @@ export class NewTabService extends BaseService {
 
   private broadcastState() {
     this.stateBroadcaster.patch({
-      tabs: this.tabs,
-      activeTabId: this.activeTabId,
+      tabs: this.tabRepo.getAll().map(t => t.toJSON()),
+      activeTabId: this.tabRepo.getActiveTabId(),
     });
   }
 
@@ -45,7 +43,7 @@ export class NewTabService extends BaseService {
   }
 
   public getActiveTabId(): string | null {
-    return this.activeTabId;
+    return this.tabRepo.getActiveTabId();
   }
 
   public async handleAction(action: VeilAction) {
@@ -54,21 +52,12 @@ export class NewTabService extends BaseService {
     switch (action.type) {
       case 'TAB_NEW': {
         const url = action.payload?.url || this.getHomepage();
-        const id = randomUUID();
-        const newTab: TabInfo = {
-          id,
-          url,
-          title: 'Loading...',
-          isLoading: true,
-          canGoBack: false,
-          canGoForward: false,
-          loadProgress: 0,
-        };
-        this.tabs.push(newTab);
-        this.activeTabId = id;
+        const tab = Tab.create(url);
+        this.tabRepo.add(tab);
+        this.tabRepo.setActiveTabId(tab.id);
         try {
-          this.viewManager.createView(id, url);
-          this.registerViewListeners(id);
+          this.viewManager.createView(tab.id, tab.url);
+          this.registerViewListeners(tab.id);
         } catch (error) {
           this.errorHandler.handle(
             'TAB_VIEW_CREATE_FAILED',
@@ -78,15 +67,17 @@ export class NewTabService extends BaseService {
           );
         }
         this.broadcastState();
-        this.eventBus.emit(EventTypes.TAB_CREATED, newTab);
+        this.eventBus.emit(EventTypes.TAB_CREATED, tab.toJSON());
         break;
       }
 
       case 'TAB_CLOSE': {
         const { id } = action.payload;
-        const index = this.tabs.findIndex(t => t.id === id);
-        if (index === -1) break;
-        this.tabs.splice(index, 1);
+        const tab = this.tabRepo.getById(id);
+        if (!tab) break;
+        const allTabs = this.tabRepo.getAll();
+        const index = allTabs.findIndex(t => t.id === id);
+        this.tabRepo.remove(id);
         try {
           this.viewManager.closeView(id);
         } catch (error) {
@@ -97,10 +88,12 @@ export class NewTabService extends BaseService {
             'TabService'
           );
         }
-        if (this.activeTabId === id) {
-          this.activeTabId = this.tabs.length > 0 ? this.tabs[Math.max(0, index - 1)].id : null;
-          if (this.activeTabId) {
-            this.viewManager.focusView(this.activeTabId);
+        if (this.tabRepo.getActiveTabId() === id) {
+          const remaining = this.tabRepo.getAll();
+          const newActiveId = remaining.length > 0 ? remaining[Math.max(0, index - 1)].id : null;
+          this.tabRepo.setActiveTabId(newActiveId);
+          if (newActiveId) {
+            this.viewManager.focusView(newActiveId);
           }
         }
         this.broadcastState();
@@ -110,9 +103,9 @@ export class NewTabService extends BaseService {
 
       case 'TAB_FOCUS': {
         const { id } = action.payload;
-        const tab = this.tabs.find(t => t.id === id);
+        const tab = this.tabRepo.getById(id);
         if (!tab) break;
-        this.activeTabId = id;
+        this.tabRepo.setActiveTabId(id);
         this.viewManager.hideAllViews();
         this.viewManager.focusView(id);
         this.broadcastState();
@@ -122,11 +115,9 @@ export class NewTabService extends BaseService {
 
       case 'TAB_NAVIGATE': {
         const { id, url } = action.payload;
-        const targetTab = this.tabs.find(t => t.id === id);
-        if (!targetTab) break;
-        targetTab.url = url;
-        targetTab.isLoading = true;
-        targetTab.loadProgress = 0;
+        const tab = this.tabRepo.getById(id);
+        if (!tab) break;
+        tab.navigate(url);
         const view = this.viewManager.getView(id);
         if (view) {
           view.webContents.loadURL(url).catch((error) => {
@@ -172,12 +163,10 @@ export class NewTabService extends BaseService {
 
       case 'TAB_GO_HOME': {
         const { id } = action.payload;
-        const tab = this.tabs.find(t => t.id === id);
+        const tab = this.tabRepo.getById(id);
         if (!tab) break;
         const homepage = this.getHomepage();
-        tab.url = homepage;
-        tab.isLoading = true;
-        tab.loadProgress = 0;
+        tab.navigate(homepage);
         const view = this.viewManager.getView(id);
         if (view) {
           view.webContents.loadURL(homepage).catch((error) => {
@@ -200,57 +189,54 @@ export class NewTabService extends BaseService {
     if (!view) return;
 
     view.webContents.on('page-title-updated', (_event, title) => {
-      const tab = this.tabs.find(t => t.id === tabId);
+      const tab = this.tabRepo.getById(tabId);
       if (tab) {
-        tab.title = title;
+        tab.updateTitle(title);
         this.broadcastState();
         this.eventBus.emit(EventTypes.TAB_TITLE_CHANGED, { id: tabId, title });
       }
     });
 
     view.webContents.on('page-favicon-updated', (_event, favicons) => {
-      const tab = this.tabs.find(t => t.id === tabId);
+      const tab = this.tabRepo.getById(tabId);
       if (tab && favicons.length > 0) {
-        tab.favicon = favicons[0];
+        tab.updateFavicon(favicons[0]);
         this.broadcastState();
       }
     });
 
     view.webContents.on('did-start-loading', () => {
-      const tab = this.tabs.find(t => t.id === tabId);
+      const tab = this.tabRepo.getById(tabId);
       if (tab) {
-        tab.isLoading = true;
+        tab.startLoading();
         this.broadcastState();
         this.eventBus.emit(EventTypes.TAB_LOADING, { id: tabId, isLoading: true });
       }
     });
 
     view.webContents.on('did-stop-loading', () => {
-      const tab = this.tabs.find(t => t.id === tabId);
+      const tab = this.tabRepo.getById(tabId);
       if (tab) {
-        tab.isLoading = false;
-        tab.loadProgress = 100;
+        tab.stopLoading();
         this.broadcastState();
         this.eventBus.emit(EventTypes.TAB_LOADING, { id: tabId, isLoading: false });
       }
     });
 
     view.webContents.on('did-navigate', (_event, url) => {
-      const tab = this.tabs.find(t => t.id === tabId);
+      const tab = this.tabRepo.getById(tabId);
       if (tab) {
         tab.url = url;
-        tab.canGoBack = view.webContents.canGoBack();
-        tab.canGoForward = view.webContents.canGoForward();
+        tab.updateNavigationState(view.webContents.canGoBack(), view.webContents.canGoForward());
         this.broadcastState();
       }
     });
 
     view.webContents.on('did-navigate-in-page', (_event, url) => {
-      const tab = this.tabs.find(t => t.id === tabId);
+      const tab = this.tabRepo.getById(tabId);
       if (tab) {
         tab.url = url;
-        tab.canGoBack = view.webContents.canGoBack();
-        tab.canGoForward = view.webContents.canGoForward();
+        tab.updateNavigationState(view.webContents.canGoBack(), view.webContents.canGoForward());
         this.broadcastState();
       }
     });
