@@ -1,27 +1,22 @@
-import { VeilService } from '../../core/ServiceRegistry';
 import { VeilAction, BookmarkItem } from '@veil/shared';
-import { EventBus, EventTypes } from '../../core/EventBus';
-import { Logger } from '../../core/Logger';
-import { ErrorHandler, ErrorSeverity } from '../../core/ErrorHandler';
-import { StateBroadcaster } from '../../core/StateBroadcaster';
-import { PersistenceService } from './PersistenceService';
+import { EventTypes } from '../../core/EventBus';
+import { ErrorSeverity } from '../../core/ErrorHandler';
+import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger, IPersistenceService } from '../../core/interfaces';
+import { BaseService } from '../../core/BaseService';
 import { randomUUID } from 'crypto';
 
-export class NewBookmarkService implements VeilService {
+export class NewBookmarkService extends BaseService {
   public name = 'BookmarkService';
   private bookmarks: BookmarkItem[] = [];
-  private logger: Logger;
-  private errorHandler: ErrorHandler;
-  private eventBus: EventBus;
-  private stateBroadcaster: StateBroadcaster;
-  private persistence: PersistenceService;
 
-  constructor() {
-    this.logger = new Logger('BookmarkService');
-    this.errorHandler = ErrorHandler.getInstance();
-    this.eventBus = EventBus.getInstance();
-    this.stateBroadcaster = StateBroadcaster.getInstance();
-    this.persistence = new PersistenceService();
+  constructor(
+    eventBus: IEventBus,
+    errorHandler: IErrorHandler,
+    private stateBroadcaster: IStateBroadcaster,
+    logger: ILogger,
+    private persistence: IPersistenceService,
+  ) {
+    super(eventBus, errorHandler, logger);
   }
 
   public async init() {

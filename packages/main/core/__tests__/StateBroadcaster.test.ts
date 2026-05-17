@@ -1,20 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { StateBroadcaster } from '../StateBroadcaster';
+import { ErrorHandler } from '../ErrorHandler';
+import { EventBus } from '../EventBus';
 import { DEFAULT_SETTINGS } from '@veil/shared';
 
 describe('StateBroadcaster', () => {
   let broadcaster: StateBroadcaster;
+  let eventBus: EventBus;
+  let errorHandler: ErrorHandler;
 
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (StateBroadcaster as any).instance = undefined;
-    broadcaster = StateBroadcaster.getInstance();
-  });
-
-  it('returns the same singleton instance', () => {
-    const a = StateBroadcaster.getInstance();
-    const b = StateBroadcaster.getInstance();
-    expect(a).toBe(b);
+    eventBus = new EventBus();
+    errorHandler = new ErrorHandler(eventBus);
+    broadcaster = new StateBroadcaster(errorHandler);
   });
 
   it('getState returns initial state', () => {

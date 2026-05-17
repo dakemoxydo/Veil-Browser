@@ -1,4 +1,5 @@
-import { EventBus, EventTypes } from './EventBus';
+import { EventTypes } from './EventBus';
+import { IEventBus, ILogger } from './interfaces';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -7,13 +8,13 @@ export enum LogLevel {
   ERROR = 3,
 }
 
-export class Logger {
+export class Logger implements ILogger {
   private static globalLevel: LogLevel = LogLevel.DEBUG;
-  private eventBus: EventBus;
 
-  constructor(private source: string) {
-    this.eventBus = EventBus.getInstance();
-  }
+  constructor(
+    private source: string,
+    private eventBus: IEventBus
+  ) {}
 
   public static setLevel(level: LogLevel): void {
     Logger.globalLevel = level;
@@ -61,7 +62,7 @@ export class Logger {
     this.eventBus.emit(EventTypes.DEBUG_LOG, { timestamp, level: levelName, source: this.source, message, data });
   }
 
-  public child(subSource: string): Logger {
-    return new Logger(`${this.source}:${subSource}`);
+  public child(subSource: string): ILogger {
+    return new Logger(`${this.source}:${subSource}`, this.eventBus);
   }
 }

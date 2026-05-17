@@ -1,7 +1,7 @@
 import { Menu, MenuItem, BaseWindow, clipboard, app } from 'electron';
-import { VeilService } from '../core/ServiceRegistry';
 import { VeilAction, SearchEngine, getSearchUrl } from '@veil/shared';
-import { Logger } from '../core/Logger';
+import { ILogger } from '../core/interfaces';
+import { BaseService } from '../core/BaseService';
 
 interface TabServiceLike {
   handleAction(action: VeilAction): void | Promise<void>;
@@ -11,16 +11,18 @@ interface SettingsServiceLike {
   getSettings(): { general: { searchEngine: SearchEngine; customSearchUrl: string } };
 }
 
-export class ContextMenuService implements VeilService {
+export class ContextMenuService extends BaseService {
   public name = 'ContextMenuService';
-  private logger: Logger;
 
   constructor(
     private window: BaseWindow,
     private tabService: TabServiceLike,
-    private settingsService: SettingsServiceLike
+    private settingsService: SettingsServiceLike,
+    eventBus: import('../core/interfaces').IEventBus,
+    errorHandler: import('../core/interfaces').IErrorHandler,
+    logger: ILogger,
   ) {
-    this.logger = new Logger('ContextMenuService');
+    super(eventBus, errorHandler, logger);
   }
 
   public async init() {

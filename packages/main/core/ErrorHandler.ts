@@ -1,4 +1,5 @@
-import { EventBus, EventTypes } from './EventBus';
+import { EventTypes } from './EventBus';
+import { IEventBus, IErrorHandler } from './interfaces';
 
 export enum ErrorSeverity {
   LOW = 'low',
@@ -16,19 +17,20 @@ export interface AppError {
   context?: unknown;
 }
 
-export class ErrorHandler {
+export class ErrorHandler implements IErrorHandler {
   private static instance: ErrorHandler;
   private errors: AppError[] = [];
   private maxErrors = 1000;
-  private eventBus: EventBus;
 
-  private constructor() {
-    this.eventBus = EventBus.getInstance();
-  }
+  constructor(private eventBus: IEventBus) {}
 
+  /** @deprecated Use constructor injection instead */
   public static getInstance(): ErrorHandler {
     if (!ErrorHandler.instance) {
-      ErrorHandler.instance = new ErrorHandler();
+      // Lazy import to avoid circular dependency
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { EventBus } = require('./EventBus');
+      ErrorHandler.instance = new ErrorHandler(new EventBus());
     }
     return ErrorHandler.instance;
   }

@@ -1,25 +1,22 @@
 import { app, shell, session, DownloadItem as ElectronDownloadItem, Event as ElectronEvent } from 'electron';
-import { VeilService } from '../../core/ServiceRegistry';
 import { VeilAction, DownloadItem } from '@veil/shared';
-import { EventBus, EventTypes } from '../../core/EventBus';
-import { Logger } from '../../core/Logger';
-import { ErrorHandler, ErrorSeverity } from '../../core/ErrorHandler';
-import { StateBroadcaster } from '../../core/StateBroadcaster';
+import { EventTypes } from '../../core/EventBus';
+import { ErrorSeverity } from '../../core/ErrorHandler';
+import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger } from '../../core/interfaces';
+import { BaseService } from '../../core/BaseService';
 import { randomUUID } from 'crypto';
 
-export class NewDownloadService implements VeilService {
+export class NewDownloadService extends BaseService {
   public name = 'DownloadService';
   private downloads: DownloadItem[] = [];
-  private logger: Logger;
-  private errorHandler: ErrorHandler;
-  private eventBus: EventBus;
-  private stateBroadcaster: StateBroadcaster;
 
-  constructor() {
-    this.logger = new Logger('DownloadService');
-    this.errorHandler = ErrorHandler.getInstance();
-    this.eventBus = EventBus.getInstance();
-    this.stateBroadcaster = StateBroadcaster.getInstance();
+  constructor(
+    eventBus: IEventBus,
+    errorHandler: IErrorHandler,
+    private stateBroadcaster: IStateBroadcaster,
+    logger: ILogger,
+  ) {
+    super(eventBus, errorHandler, logger);
   }
 
   public async init() {

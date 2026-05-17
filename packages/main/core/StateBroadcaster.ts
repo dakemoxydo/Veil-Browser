@@ -1,11 +1,11 @@
 import { WebContents } from 'electron';
 import { VeilState, DEFAULT_SETTINGS } from '@veil/shared';
-import { ErrorHandler, ErrorSeverity } from './ErrorHandler';
+import { ErrorSeverity } from './ErrorHandler';
+import { IErrorHandler, IStateBroadcaster } from './interfaces';
 
-export class StateBroadcaster {
+export class StateBroadcaster implements IStateBroadcaster {
   private static instance: StateBroadcaster;
   private webContents: WebContents | null = null;
-  private errorHandler: ErrorHandler;
   private state: VeilState = {
     tabs: [],
     activeTabId: null,
@@ -19,13 +19,17 @@ export class StateBroadcaster {
     settings: { ...DEFAULT_SETTINGS },
   };
 
-  private constructor() {
-    this.errorHandler = ErrorHandler.getInstance();
-  }
+  constructor(private errorHandler: IErrorHandler) {}
 
+  /** @deprecated Use constructor injection instead */
   public static getInstance(): StateBroadcaster {
     if (!StateBroadcaster.instance) {
-      StateBroadcaster.instance = new StateBroadcaster();
+      // Lazy imports to avoid circular dependency
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { ErrorHandler } = require('./ErrorHandler');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { EventBus } = require('./EventBus');
+      StateBroadcaster.instance = new StateBroadcaster(new ErrorHandler(new EventBus()));
     }
     return StateBroadcaster.instance;
   }

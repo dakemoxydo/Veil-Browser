@@ -5,16 +5,7 @@ describe('EventBus', () => {
   let bus: EventBus;
 
   beforeEach(() => {
-    // Reset singleton
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (EventBus as any).instance = undefined;
-    bus = EventBus.getInstance();
-  });
-
-  it('returns the same singleton instance', () => {
-    const a = EventBus.getInstance();
-    const b = EventBus.getInstance();
-    expect(a).toBe(b);
+    bus = new EventBus();
   });
 
   it('calls handler on emit', async () => {

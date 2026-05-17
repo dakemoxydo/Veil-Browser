@@ -6,7 +6,9 @@ export interface DomainEvent {
   timestamp: number;
 }
 
-export class EventBus {
+import { IEventBus } from './interfaces';
+
+export class EventBus implements IEventBus {
   private static instance: EventBus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handlers = new Map<string, Set<EventHandler<any>>>();

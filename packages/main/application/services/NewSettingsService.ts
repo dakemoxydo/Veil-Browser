@@ -1,27 +1,22 @@
-import { VeilService } from '../../core/ServiceRegistry';
-import { VeilAction, VeilSettings, DEFAULT_SETTINGS } from '@veil/shared';
-import { EventBus, EventTypes } from '../../core/EventBus';
-import { Logger } from '../../core/Logger';
-import { ErrorHandler, ErrorSeverity } from '../../core/ErrorHandler';
-import { StateBroadcaster } from '../../core/StateBroadcaster';
-import { PersistenceService } from './PersistenceService';
 import { app } from 'electron';
+import { VeilAction, VeilSettings, DEFAULT_SETTINGS } from '@veil/shared';
+import { EventTypes } from '../../core/EventBus';
+import { ErrorSeverity } from '../../core/ErrorHandler';
+import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger, IPersistenceService } from '../../core/interfaces';
+import { BaseService } from '../../core/BaseService';
 
-export class NewSettingsService implements VeilService {
+export class NewSettingsService extends BaseService {
   public name = 'SettingsService';
   private settings: VeilSettings = { ...DEFAULT_SETTINGS };
-  private logger: Logger;
-  private errorHandler: ErrorHandler;
-  private eventBus: EventBus;
-  private stateBroadcaster: StateBroadcaster;
-  private persistence: PersistenceService;
 
-  constructor() {
-    this.logger = new Logger('SettingsService');
-    this.errorHandler = ErrorHandler.getInstance();
-    this.eventBus = EventBus.getInstance();
-    this.stateBroadcaster = StateBroadcaster.getInstance();
-    this.persistence = new PersistenceService();
+  constructor(
+    eventBus: IEventBus,
+    errorHandler: IErrorHandler,
+    private stateBroadcaster: IStateBroadcaster,
+    logger: ILogger,
+    private persistence: IPersistenceService,
+  ) {
+    super(eventBus, errorHandler, logger);
   }
 
   public async init() {

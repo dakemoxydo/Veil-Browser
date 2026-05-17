@@ -3,6 +3,9 @@ import { VeilWindow } from './core/VeilWindow';
 import { DebugWindow } from './core/DebugWindow';
 import { ServiceRegistry } from './core/ServiceRegistry';
 import { Logger } from './core/Logger';
+import { EventBus } from './core/EventBus';
+import { ErrorHandler } from './core/ErrorHandler';
+import { StateBroadcaster } from './core/StateBroadcaster';
 import { ConfigManager } from './core/AppConfig';
 import { NewTabService } from './application/services/NewTabService';
 import { NewBookmarkService } from './application/services/NewBookmarkService';
@@ -13,13 +16,22 @@ import { PersistenceService } from './application/services/PersistenceService';
 import { ExtensionService } from './services/ExtensionService';
 import { AdblockService } from './services/AdblockService';
 import { ContextMenuService } from './services/ContextMenuService';
-import { StateBroadcaster } from './core/StateBroadcaster';
 import { randomUUID } from 'crypto';
 import { LogLevel as SharedLogLevel } from '@veil/shared';
 
-const registry = new ServiceRegistry();
+// Core infrastructure (injection order matters)
+const eventBus = new EventBus();
+const errorHandler = new ErrorHandler(eventBus);
+const stateBroadcaster = new StateBroadcaster(errorHandler);
 const config = ConfigManager.getInstance();
-const logger = new Logger('Main');
+const logger = new Logger('Main', eventBus);
+const persistence = new PersistenceService(errorHandler);
+
+const registry = new ServiceRegistry(
+  new Logger('ServiceRegistry', eventBus),
+  errorHandler,
+  stateBroadcaster,
+);
 
 let mainWindow: VeilWindow | null = null;
 let debugWindow: DebugWindow | null = null;
@@ -106,7 +118,6 @@ function registerIpcHandlers() {
         message: log.message,
         data: log.data,
       };
-      // Only send to debug window — renderer already has this log locally
       if (debugWindow?.window && !debugWindow.window.isDestroyed()) {
         debugWindow.getWebContents()?.send('veil:log', logEntry);
       }
@@ -150,23 +161,49 @@ async function bootstrap() {
   await app.whenReady();
 
   mainWindow = new VeilWindow();
-  StateBroadcaster.getInstance().setWebContents(mainWindow.getWebContents());
+  stateBroadcaster.setWebContents(mainWindow.getWebContents());
 
-  // Debug window - NOT auto-opened, user opens with Ctrl+Shift+D
-  debugWindow = DebugWindow.getInstance();
+  debugWindow = new DebugWindow();
 
-  // Register IPC handlers (only once)
   registerIpcHandlers();
 
-  // Create services
-  const settingsService = new NewSettingsService();
-  const tabService = new NewTabService(mainWindow.viewManager);
-  const historyService = new NewHistoryService();
-  const bookmarkService = new NewBookmarkService();
-  const downloadService = new NewDownloadService();
-  const contextMenuService = new ContextMenuService(mainWindow.window, tabService, settingsService);
+  // Create services with injected dependencies
+  const settingsService = new NewSettingsService(
+    eventBus, errorHandler, stateBroadcaster,
+    new Logger('SettingsService', eventBus), persistence
+  );
+
+  const tabService = new NewTabService(
+    mainWindow.viewManager, eventBus, errorHandler, stateBroadcaster,
+    new Logger('TabService', eventBus)
+  );
+
+  const historyService = new NewHistoryService(
+    eventBus, errorHandler,
+    new Logger('HistoryService', eventBus), persistence
+  );
+
+  const bookmarkService = new NewBookmarkService(
+    eventBus, errorHandler, stateBroadcaster,
+    new Logger('BookmarkService', eventBus), persistence
+  );
+
+  const downloadService = new NewDownloadService(
+    eventBus, errorHandler, stateBroadcaster,
+    new Logger('DownloadService', eventBus)
+  );
+
+  const contextMenuService = new ContextMenuService(
+    mainWindow.window, tabService, settingsService,
+    eventBus, errorHandler, new Logger('ContextMenuService', eventBus)
+  );
+
   const extensionService = new ExtensionService(mainWindow.window);
-  const adblockService = new AdblockService(settingsService);
+
+  const adblockService = new AdblockService(
+    settingsService, stateBroadcaster, eventBus, errorHandler,
+    new Logger('AdblockService', eventBus)
+  );
 
   // Register services
   registry.register(settingsService);
@@ -180,7 +217,6 @@ async function bootstrap() {
 
   await registry.initAll();
 
-  // Register keyboard shortcuts
   registerShortcuts();
 
   const url = config.getRendererUrl();
@@ -242,7 +278,7 @@ app.on('before-quit', () => {
   PersistenceService.flushAll();
 });
 
-// Main window closed → quit the app (close debug window too)
+// Main window closed → quit the app
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
   if (debugWindow) {

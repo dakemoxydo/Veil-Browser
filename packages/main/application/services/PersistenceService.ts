@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
-import { ErrorHandler, ErrorSeverity } from '../../core/ErrorHandler';
+import { ErrorSeverity } from '../../core/ErrorHandler';
+import { IErrorHandler, IPersistenceService } from '../../core/interfaces';
 
-export class PersistenceService {
+export class PersistenceService implements IPersistenceService {
   private static instances: PersistenceService[] = [];
   private dataDir: string;
-  private errorHandler: ErrorHandler;
   private pendingSaves: Map<string, { timer: ReturnType<typeof setTimeout>; data: unknown }> = new Map();
 
   public static flushAll(): void {
@@ -15,12 +15,11 @@ export class PersistenceService {
     }
   }
 
-  constructor() {
+  constructor(private errorHandler: IErrorHandler) {
     if (!PersistenceService.instances.includes(this)) {
       PersistenceService.instances.push(this);
     }
     this.dataDir = path.join(app.getPath('userData'), 'VeilBrowser');
-    this.errorHandler = ErrorHandler.getInstance();
     this.ensureDataDir();
   }
 

@@ -1,19 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ErrorHandler, ErrorSeverity } from '../ErrorHandler';
+import { EventBus } from '../EventBus';
 
 describe('ErrorHandler', () => {
   let handler: ErrorHandler;
+  let eventBus: EventBus;
 
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (ErrorHandler as any).instance = undefined;
-    handler = ErrorHandler.getInstance();
-  });
-
-  it('returns the same singleton instance', () => {
-    const a = ErrorHandler.getInstance();
-    const b = ErrorHandler.getInstance();
-    expect(a).toBe(b);
+    eventBus = new EventBus();
+    handler = new ErrorHandler(eventBus);
   });
 
   it('handle stores error in history', () => {

@@ -1,8 +1,7 @@
 import { ipcMain } from 'electron';
 import { VeilAction } from '@veil/shared';
-import { StateBroadcaster } from './StateBroadcaster';
-import { Logger } from './Logger';
-import { ErrorHandler, ErrorSeverity } from './ErrorHandler';
+import { ErrorSeverity } from './ErrorHandler';
+import { ILogger, IErrorHandler, IStateBroadcaster } from './interfaces';
 
 const VALID_ACTION_TYPES = new Set([
   'TAB_NEW', 'TAB_CLOSE', 'TAB_NAVIGATE', 'TAB_FOCUS',
@@ -41,17 +40,16 @@ export interface VeilService {
 export class ServiceRegistry {
   private services: Map<string, VeilService> = new Map();
   private initialized = false;
-  private logger: Logger;
-  private errorHandler: ErrorHandler;
 
   // Rate limiting for veil:action
   private actionTimestamps: number[] = [];
   private static readonly MAX_ACTIONS_PER_SECOND = 100;
 
-  constructor() {
-    this.logger = new Logger('ServiceRegistry');
-    this.errorHandler = ErrorHandler.getInstance();
-  }
+  constructor(
+    private logger: ILogger,
+    private errorHandler: IErrorHandler,
+    private stateBroadcaster: IStateBroadcaster,
+  ) {}
 
   public register(service: VeilService) {
     this.services.set(service.name, service);
@@ -109,7 +107,7 @@ export class ServiceRegistry {
 
     ipcMain.handle('veil:get-state', () => {
       try {
-        return StateBroadcaster.getInstance().getState();
+        return this.stateBroadcaster.getState();
       } catch (error) {
         this.errorHandler.handle(
           'GET_STATE_FAILED',

@@ -1,26 +1,27 @@
 import { session } from 'electron';
-import { VeilService } from '../core/ServiceRegistry';
 import { VeilAction } from '@veil/shared';
-import { StateBroadcaster } from '../core/StateBroadcaster';
-import { Logger } from '../core/Logger';
-import { ErrorHandler } from '../core/ErrorHandler';
+import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger } from '../core/interfaces';
+import { BaseService } from '../core/BaseService';
 
 interface SettingsServiceLike {
   getSettings(): { privacy: { adblockEnabled: boolean } };
 }
 
-export class AdblockService implements VeilService {
+export class AdblockService extends BaseService {
   public name = 'AdblockService';
   private blockedCount = 0;
   private blockedCurrentPage = 0;
   private isEnabled = true;
   private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
-  private logger: Logger;
-  private errorHandler: ErrorHandler;
 
-  constructor(private settingsService: SettingsServiceLike) {
-    this.logger = new Logger('AdblockService');
-    this.errorHandler = ErrorHandler.getInstance();
+  constructor(
+    private settingsService: SettingsServiceLike,
+    private stateBroadcaster: IStateBroadcaster,
+    eventBus: IEventBus,
+    errorHandler: IErrorHandler,
+    logger: ILogger,
+  ) {
+    super(eventBus, errorHandler, logger);
   }
 
   private blockList = [
@@ -79,7 +80,7 @@ export class AdblockService implements VeilService {
   }
 
   private broadcastStats() {
-    StateBroadcaster.getInstance().patch({
+    this.stateBroadcaster.patch({
       privacyStats: {
         blockedTotal: this.blockedCount,
         blockedCurrent: this.blockedCurrentPage,

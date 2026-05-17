@@ -1,26 +1,24 @@
-import { VeilService } from '../../core/ServiceRegistry';
 import { VeilAction, TabInfo } from '@veil/shared';
 import { ViewManager } from '../../core/ViewManager';
-import { EventBus, EventTypes } from '../../core/EventBus';
-import { Logger } from '../../core/Logger';
-import { ErrorHandler, ErrorSeverity } from '../../core/ErrorHandler';
-import { StateBroadcaster } from '../../core/StateBroadcaster';
+import { EventTypes } from '../../core/EventBus';
+import { ErrorSeverity } from '../../core/ErrorHandler';
+import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger } from '../../core/interfaces';
+import { BaseService } from '../../core/BaseService';
 import { randomUUID } from 'crypto';
 
-export class NewTabService implements VeilService {
+export class NewTabService extends BaseService {
   public name = 'TabService';
   private tabs: TabInfo[] = [];
   private activeTabId: string | null = null;
-  private logger: Logger;
-  private errorHandler: ErrorHandler;
-  private eventBus: EventBus;
-  private stateBroadcaster: StateBroadcaster;
 
-  constructor(private viewManager: ViewManager) {
-    this.logger = new Logger('TabService');
-    this.errorHandler = ErrorHandler.getInstance();
-    this.eventBus = EventBus.getInstance();
-    this.stateBroadcaster = StateBroadcaster.getInstance();
+  constructor(
+    private viewManager: ViewManager,
+    eventBus: IEventBus,
+    errorHandler: IErrorHandler,
+    private stateBroadcaster: IStateBroadcaster,
+    logger: ILogger,
+  ) {
+    super(eventBus, errorHandler, logger);
   }
 
   public async init() {

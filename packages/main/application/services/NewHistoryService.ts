@@ -1,24 +1,21 @@
-import { VeilService } from '../../core/ServiceRegistry';
 import { VeilAction, HistoryEntry } from '@veil/shared';
-import { EventBus, EventTypes } from '../../core/EventBus';
-import { Logger } from '../../core/Logger';
-import { ErrorHandler, ErrorSeverity } from '../../core/ErrorHandler';
-import { PersistenceService } from './PersistenceService';
+import { EventTypes } from '../../core/EventBus';
+import { ErrorSeverity } from '../../core/ErrorHandler';
+import { IEventBus, IErrorHandler, ILogger, IPersistenceService } from '../../core/interfaces';
+import { BaseService } from '../../core/BaseService';
 import { randomUUID } from 'crypto';
 
-export class NewHistoryService implements VeilService {
+export class NewHistoryService extends BaseService {
   public name = 'HistoryService';
   private history: HistoryEntry[] = [];
-  private logger: Logger;
-  private errorHandler: ErrorHandler;
-  private eventBus: EventBus;
-  private persistence: PersistenceService;
 
-  constructor() {
-    this.logger = new Logger('HistoryService');
-    this.errorHandler = ErrorHandler.getInstance();
-    this.eventBus = EventBus.getInstance();
-    this.persistence = new PersistenceService();
+  constructor(
+    eventBus: IEventBus,
+    errorHandler: IErrorHandler,
+    logger: ILogger,
+    private persistence: IPersistenceService,
+  ) {
+    super(eventBus, errorHandler, logger);
   }
 
   public async init() {
