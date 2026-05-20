@@ -22,12 +22,12 @@ export class Download {
     this.startTime = props.startTime;
   }
 
-  static create(filename: string, url: string, downloadPath: string, totalBytes: number): Download {
+  static create(filename: string, url: string, filePath: string, totalBytes: number): Download {
     return new Download({
       id: randomUUID(),
       filename,
       url,
-      path: downloadPath,
+      path: filePath,
       totalBytes,
       receivedBytes: 0,
       state: 'progressing',
@@ -45,7 +45,9 @@ export class Download {
 
   complete(): void {
     this.state = 'completed';
-    this.receivedBytes = this.totalBytes;
+    if (this.totalBytes > 0) {
+      this.receivedBytes = this.totalBytes;
+    }
   }
 
   cancel(): void {
@@ -61,7 +63,7 @@ export class Download {
   }
 
   getProgress(): number {
-    if (this.totalBytes === 0) return 0;
+    if (this.totalBytes <= 0) return -1; // -1 = indeterminate
     return Math.round((this.receivedBytes / this.totalBytes) * 100);
   }
 

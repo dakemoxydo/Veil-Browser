@@ -4,18 +4,23 @@ import { EventTypes } from '../../core/EventBus';
 import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger } from '../../core/interfaces';
 import { ISettingsRepository } from '../../core/repositories/ISettingsRepository';
 import { BaseService } from '../../core/BaseService';
+import { UpdateSettingsUseCase } from '../usecases/UpdateSettingsUseCase';
 
-export class NewSettingsService extends BaseService {
+export class SettingsService extends BaseService {
   public name = 'SettingsService';
+
+  private updateSettings: UpdateSettingsUseCase;
+  private listenerCleanups: Array<() => void> = [];
 
   constructor(
     private settingsRepo: ISettingsRepository,
     eventBus: IEventBus,
     errorHandler: IErrorHandler,
-    private stateBroadcaster: IStateBroadcaster,
+    stateBroadcaster: IStateBroadcaster,
     logger: ILogger,
   ) {
-    super(eventBus, errorHandler, logger);
+    super(eventBus, errorHandler, logger, stateBroadcaster);
+    this.updateSettings = new UpdateSettingsUseCase(settingsRepo);
   }
 
   public async init() {
@@ -25,18 +30,25 @@ export class NewSettingsService extends BaseService {
     if (!settings.general.downloadPath) {
       this.settingsRepo.update({ general: { ...settings.general, downloadPath: app.getPath('downloads') } });
     }
-    this.broadcast();
+    this.broadcastSettings();
     this.setupEventListeners();
   }
 
   private setupEventListeners(): void {
-    this.eventBus.on(EventTypes.SETTINGS_CHANGED, (data: Partial<VeilSettings>) => {
-      this.logger.debug('Settings changed', data);
-    });
+    this.listenerCleanups.push(
+      this.eventBus.on(EventTypes.SETTINGS_CHANGED, (data: Partial<VeilSettings>) => {
+        this.logger.debug('Settings changed', data);
+      }),
+    );
   }
 
-  private broadcast() {
-    this.stateBroadcaster.patch({ settings: this.settingsRepo.get() });
+  public destroy(): void {
+    this.listenerCleanups.forEach(fn => fn());
+    this.listenerCleanups = [];
+  }
+
+  private broadcastSettings() {
+    this.broadcast({ settings: this.settingsRepo.get() });
   }
 
   public getSettings(): VeilSettings {
@@ -47,11 +59,9 @@ export class NewSettingsService extends BaseService {
     this.logger.debug(`Handling action: ${action.type}`);
 
     if (action.type === 'SETTINGS_UPDATE' && action.payload) {
-      const payload = action.payload as Partial<VeilSettings>;
-      this.settingsRepo.update(payload);
-      this.broadcast();
-      this.eventBus.emit(EventTypes.SETTINGS_CHANGED, payload);
-      this.logger.info('Settings updated');
+      this.updateSettings.execute(action.payload as Partial<VeilSettings>);
+      this.broadcastSettings();
+      this.eventBus.emit(EventTypes.SETTINGS_CHANGED, action.payload);
     }
   }
 }

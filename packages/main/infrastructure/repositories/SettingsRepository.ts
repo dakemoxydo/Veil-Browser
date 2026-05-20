@@ -16,8 +16,10 @@ export class SettingsRepository implements ISettingsRepository {
         general: { ...DEFAULT_SETTINGS.general, ...saved.general },
         privacy: { ...DEFAULT_SETTINGS.privacy, ...saved.privacy },
         appearance: { ...DEFAULT_SETTINGS.appearance, ...saved.appearance },
+        proxy: { ...DEFAULT_SETTINGS.proxy, ...saved.proxy },
       };
-    } catch {
+    } catch (e) {
+      console.warn('[SettingsRepository] Failed to parse saved settings, using defaults:', e);
       return { ...DEFAULT_SETTINGS };
     }
   }
@@ -31,11 +33,22 @@ export class SettingsRepository implements ISettingsRepository {
   }
 
   update(partial: Partial<VeilSettings>): void {
-    this.settings = {
-      general: { ...this.settings.general, ...partial.general },
-      privacy: { ...this.settings.privacy, ...partial.privacy },
-      appearance: { ...this.settings.appearance, ...partial.appearance },
+    // Deep merge: only overwrite provided keys within each section
+    const merged: VeilSettings = {
+      general: partial.general
+        ? { ...this.settings.general, ...partial.general }
+        : { ...this.settings.general },
+      privacy: partial.privacy
+        ? { ...this.settings.privacy, ...partial.privacy }
+        : { ...this.settings.privacy },
+      appearance: partial.appearance
+        ? { ...this.settings.appearance, ...partial.appearance }
+        : { ...this.settings.appearance },
+      proxy: partial.proxy
+        ? { ...this.settings.proxy, ...partial.proxy }
+        : { ...this.settings.proxy },
     };
+    this.settings = merged;
     this.save();
   }
 }

@@ -1,6 +1,6 @@
 import { Menu, MenuItem, BaseWindow, clipboard, app } from 'electron';
 import { VeilAction, SearchEngine, getSearchUrl } from '@veil/shared';
-import { ILogger } from '../core/interfaces';
+import { IEventBus, IErrorHandler, ILogger } from '../core/interfaces';
 import { BaseService } from '../core/BaseService';
 
 interface TabServiceLike {
@@ -11,15 +11,28 @@ interface SettingsServiceLike {
   getSettings(): { general: { searchEngine: SearchEngine; customSearchUrl: string } };
 }
 
+const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'veil:']);
+
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return SAFE_PROTOCOLS.has(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 export class ContextMenuService extends BaseService {
   public name = 'ContextMenuService';
+  private webContentsHandler: ((event: Electron.Event, webContents: Electron.WebContents) => void) | null = null;
+  private contextMenuCleanups: Map<number, () => void> = new Map();
 
   constructor(
     private window: BaseWindow,
     private tabService: TabServiceLike,
     private settingsService: SettingsServiceLike,
-    eventBus: import('../core/interfaces').IEventBus,
-    errorHandler: import('../core/interfaces').IErrorHandler,
+    eventBus: IEventBus,
+    errorHandler: IErrorHandler,
     logger: ILogger,
   ) {
     super(eventBus, errorHandler, logger);
@@ -27,15 +40,37 @@ export class ContextMenuService extends BaseService {
 
   public async init() {
     // Auto-register context menu on all new webContents (tabs, etc.)
-    app.on('web-contents-created', (_, webContents) => {
+    this.webContentsHandler = (_, webContents) => {
       this.registerTabContextMenu(webContents);
-    });
+    };
+    app.on('web-contents-created', this.webContentsHandler);
     this.logger.info('ContextMenuService initialized');
   }
 
+  public destroy(): void {
+    if (this.webContentsHandler) {
+      app.removeListener('web-contents-created', this.webContentsHandler);
+      this.webContentsHandler = null;
+    }
+    // Clean up per-webContents listeners
+    for (const cleanup of this.contextMenuCleanups.values()) {
+      cleanup();
+    }
+    this.contextMenuCleanups.clear();
+  }
+
   public registerTabContextMenu(webContents: Electron.WebContents) {
-    webContents.on('context-menu', (event, params) => {
+    const handler = (_event: Electron.Event, params: Electron.ContextMenuParams) => {
       this.showContextMenu(params, webContents);
+    };
+    webContents.on('context-menu', handler);
+    // Track cleanup for this webContents
+    this.contextMenuCleanups.set(webContents.id, () => {
+      webContents.removeListener('context-menu', handler);
+    });
+    // Remove tracking when webContents is destroyed
+    webContents.on('destroyed', () => {
+      this.contextMenuCleanups.delete(webContents.id);
     });
   }
 
@@ -46,7 +81,11 @@ export class ContextMenuService extends BaseService {
     if (params.linkURL) {
       menu.append(new MenuItem({
         label: 'Open link in new tab',
-        click: () => this.tabService.handleAction({ type: 'TAB_NEW', payload: { url: params.linkURL } }),
+        click: () => {
+          if (isSafeUrl(params.linkURL)) {
+            this.tabService.handleAction({ type: 'TAB_NEW', payload: { url: params.linkURL } });
+          }
+        },
       }));
       menu.append(new MenuItem({
         label: 'Copy link address',
@@ -67,7 +106,11 @@ export class ContextMenuService extends BaseService {
       }));
       menu.append(new MenuItem({
         label: 'Open image in new tab',
-        click: () => this.tabService.handleAction({ type: 'TAB_NEW', payload: { url: params.srcURL } }),
+        click: () => {
+          if (isSafeUrl(params.srcURL)) {
+            this.tabService.handleAction({ type: 'TAB_NEW', payload: { url: params.srcURL } });
+          }
+        },
       }));
       menu.append(new MenuItem({ type: 'separator' }));
     }
@@ -124,6 +167,4 @@ export class ContextMenuService extends BaseService {
 
     menu.popup({ window: this.window });
   }
-
-  public async handleAction(_action: VeilAction) {}
 }

@@ -1,16 +1,25 @@
-import { session, BaseWindow, app, dialog } from 'electron';
+import { BaseWindow, dialog, app } from 'electron';
 import { VeilService } from '../core/ServiceRegistry';
 import { VeilAction } from '@veil/shared';
+import { ILogger } from '../core/interfaces';
+import { ISession } from '../core/ports/ISession';
 import * as path from 'path';
 import * as fs from 'fs';
 
+interface ChromeExtensionsInstance {
+  addTab(webContents: Electron.WebContents, window: Electron.BaseWindow): void;
+}
+
 export class ExtensionService implements VeilService {
   public name = 'ExtensionService';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private extensions: any = null; // electron-chrome-extensions has no types
-  private webContentsListenerRegistered = false;
+  private extensions: ChromeExtensionsInstance | null = null;
+  private webContentsHandler: ((event: Electron.Event, webContents: Electron.WebContents) => void) | null = null;
 
-  constructor(private window: BaseWindow) {}
+  constructor(
+    private session: ISession,
+    private window: BaseWindow,
+    private logger: ILogger,
+  ) {}
 
   public async init() {
     const possiblePaths = [
@@ -38,7 +47,7 @@ export class ExtensionService implements VeilService {
     }
 
     if (!resolvedPath) {
-      console.warn('[Veil] electron-chrome-extensions not found, extensions disabled');
+      this.logger.warn('electron-chrome-extensions not found, extensions disabled');
       return;
     }
 
@@ -46,15 +55,15 @@ export class ExtensionService implements VeilService {
       const mod = await import('electron-chrome-extensions');
       const ElectronChromeExtensions = mod.ElectronChromeExtensions;
 
+      const electronSession = (await import('electron')).session;
       this.extensions = new ElectronChromeExtensions({
-        session: session.defaultSession,
+        session: electronSession.defaultSession,
         license: 'GPL-3.0',
         modulePath: resolvedPath
       });
 
-      if (!this.webContentsListenerRegistered) {
-        this.webContentsListenerRegistered = true;
-        app.on('web-contents-created', (_, webContents) => {
+      if (!this.webContentsHandler) {
+        this.webContentsHandler = (_, webContents) => {
           const url = webContents.getURL();
           if (
             url &&
@@ -65,12 +74,13 @@ export class ExtensionService implements VeilService {
           ) {
             this.extensions?.addTab(webContents, this.window);
           }
-        });
+        };
+        app.on('web-contents-created', this.webContentsHandler);
       }
 
-      console.info('[Veil] ExtensionService initialized');
+      this.logger.info('ExtensionService initialized');
     } catch (error) {
-      console.warn('[Veil] Failed to load electron-chrome-extensions:', error);
+      this.logger.warn('Failed to load electron-chrome-extensions', error);
     }
   }
 
@@ -79,16 +89,22 @@ export class ExtensionService implements VeilService {
 
     switch (action.type) {
       case 'EXT_LOAD_UNPACKED': {
-        const { path: extPath } = action.payload;
+        const extPath = action.payload?.path;
         if (!extPath || typeof extPath !== 'string') {
-          console.error('[Veil] Invalid extension path');
+          this.logger.error('Invalid extension path');
+          return;
+        }
+        // Resolve to absolute path and verify it exists as a directory
+        const resolved = path.resolve(extPath);
+        if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+          this.logger.error(`Extension path is not a valid directory: ${extPath}`);
           return;
         }
         try {
-          await session.defaultSession.loadExtension(extPath);
-          console.info(`[Veil] Extension loaded from: ${extPath}`);
+          await this.session.loadExtension(resolved);
+          this.logger.info(`Extension loaded from: ${resolved}`);
         } catch (error) {
-          console.error(`[Veil] Failed to load extension:`, error);
+          this.logger.error('Failed to load extension', error);
         }
         break;
       }
@@ -110,5 +126,12 @@ export class ExtensionService implements VeilService {
 
   public getExtensions() {
     return this.extensions;
+  }
+
+  public destroy(): void {
+    if (this.webContentsHandler) {
+      app.removeListener('web-contents-created', this.webContentsHandler);
+      this.webContentsHandler = null;
+    }
   }
 }

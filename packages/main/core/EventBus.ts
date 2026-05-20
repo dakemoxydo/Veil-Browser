@@ -9,18 +9,10 @@ export interface DomainEvent {
 import { IEventBus } from './interfaces';
 
 export class EventBus implements IEventBus {
-  private static instance: EventBus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handlers = new Map<string, Set<EventHandler<any>>>();
   private eventHistory: DomainEvent[] = [];
   private maxHistorySize = 1000;
-
-  public static getInstance(): EventBus {
-    if (!EventBus.instance) {
-      EventBus.instance = new EventBus();
-    }
-    return EventBus.instance;
-  }
 
   public on<T>(eventType: string, handler: EventHandler<T>): () => void {
     if (!this.handlers.has(eventType)) {
@@ -45,16 +37,19 @@ export class EventBus implements IEventBus {
   }
 
   public async emit<T>(eventType: string, data: T): Promise<void> {
+    const timestamp = Date.now();
     const event: DomainEvent = {
       type: eventType,
       payload: data,
-      timestamp: Date.now(),
+      timestamp,
     };
 
-    // Store in history
-    this.eventHistory.push(event);
-    if (this.eventHistory.length > this.maxHistorySize) {
-      this.eventHistory = this.eventHistory.slice(-this.maxHistorySize);
+    // Store in history — skip high-frequency debug events to prevent bloat
+    if (eventType !== 'debug:log') {
+      this.eventHistory.push(event);
+      if (this.eventHistory.length > this.maxHistorySize) {
+        this.eventHistory = this.eventHistory.slice(-this.maxHistorySize);
+      }
     }
 
     // Get handlers
@@ -83,9 +78,9 @@ export class EventBus implements IEventBus {
   }
 
   public once<T>(eventType: string, handler: EventHandler<T>): () => void {
-    const wrappedHandler = (data: T) => {
-      handler(data);
+    const wrappedHandler: EventHandler<T> = async (data: T) => {
       this.off(eventType, wrappedHandler);
+      await handler(data);
     };
     return this.on(eventType, wrappedHandler);
   }

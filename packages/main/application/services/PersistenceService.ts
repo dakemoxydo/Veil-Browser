@@ -16,9 +16,8 @@ export class PersistenceService implements IPersistenceService {
   }
 
   constructor(private errorHandler: IErrorHandler) {
-    if (!PersistenceService.instances.includes(this)) {
-      PersistenceService.instances.push(this);
-    }
+    // Register first, so dispose() can always find us even if constructor fails later
+    PersistenceService.instances.push(this);
     this.dataDir = path.join(app.getPath('userData'), 'VeilBrowser');
     this.ensureDataDir();
   }
@@ -38,9 +37,14 @@ export class PersistenceService implements IPersistenceService {
     }
   }
 
+  private sanitizeFilename(filename: string): string {
+    // Prevent path traversal — only allow basename
+    return path.basename(filename);
+  }
+
   public load<T>(filename: string, defaultValue: T): T {
     try {
-      const filePath = path.join(this.dataDir, filename);
+      const filePath = path.join(this.dataDir, this.sanitizeFilename(filename));
       if (!fs.existsSync(filePath)) {
         return defaultValue;
       }
@@ -67,15 +71,29 @@ export class PersistenceService implements IPersistenceService {
       data,
       timer: setTimeout(() => {
         this.pendingSaves.delete(filename);
-        this.writeSync(filename, data);
+        this.writeAsync(filename, data);
       }, 500),
+    });
+  }
+
+  private writeAsync(filename: string, data: unknown): void {
+    const filePath = path.join(this.dataDir, this.sanitizeFilename(filename));
+    fs.writeFile(filePath, JSON.stringify(data), 'utf-8', (error) => {
+      if (error) {
+        this.errorHandler.handle(
+          'PERSISTENCE_SAVE_FAILED',
+          `Failed to save ${filename}: ${error}`,
+          ErrorSeverity.MEDIUM,
+          'PersistenceService'
+        );
+      }
     });
   }
 
   private writeSync(filename: string, data: unknown): void {
     try {
-      const filePath = path.join(this.dataDir, filename);
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+      const filePath = path.join(this.dataDir, this.sanitizeFilename(filename));
+      fs.writeFileSync(filePath, JSON.stringify(data), 'utf-8');
     } catch (error) {
       this.errorHandler.handle(
         'PERSISTENCE_SAVE_FAILED',
@@ -95,12 +113,12 @@ export class PersistenceService implements IPersistenceService {
   }
 
   public exists(filename: string): boolean {
-    return fs.existsSync(path.join(this.dataDir, filename));
+    return fs.existsSync(path.join(this.dataDir, this.sanitizeFilename(filename)));
   }
 
   public delete(filename: string): void {
     try {
-      const filePath = path.join(this.dataDir, filename);
+      const filePath = path.join(this.dataDir, this.sanitizeFilename(filename));
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -116,5 +134,13 @@ export class PersistenceService implements IPersistenceService {
 
   public getDataDir(): string {
     return this.dataDir;
+  }
+
+  public dispose(): void {
+    this.flush();
+    const index = PersistenceService.instances.indexOf(this);
+    if (index !== -1) {
+      PersistenceService.instances.splice(index, 1);
+    }
   }
 }

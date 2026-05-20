@@ -14,7 +14,7 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     target: 'chrome134',
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV !== 'production',
   },
   server: {
     port: 3000,

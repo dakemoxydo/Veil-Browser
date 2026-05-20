@@ -44,15 +44,16 @@ export class ServiceRegistry {
     ipcMain.handle('veil:action', async (_, action: unknown) => {
       if (!this.validator.isValid(action)) {
         this.logger.warn(`Invalid action rejected: ${JSON.stringify(action)}`);
-        return;
+        return { success: false, error: 'Invalid action' };
       }
 
       if (!this.rateLimiter.check()) {
         this.logger.warn('Rate limit exceeded for veil:action');
-        return;
+        return { success: false, error: 'Rate limit exceeded' };
       }
 
       await this.dispatcher.dispatch(action, [...this.services.values()]);
+      return { success: true };
     });
 
     ipcMain.handle('veil:get-state', () => {

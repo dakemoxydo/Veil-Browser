@@ -6,12 +6,17 @@ import { initVeilStore } from './store/useVeilStore';
 import './styles/tokens.css';
 import './styles/glass.css';
 
-initVeilStore();
+const renderApp = () => {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <ErrorBoundary name="App">
+        <VeilShell />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
+};
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary name="App">
-      <VeilShell />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+initVeilStore().then(renderApp).catch((err) => {
+  console.error('[VeilBrowser] Store init failed, rendering with defaults:', err);
+  renderApp();
+});

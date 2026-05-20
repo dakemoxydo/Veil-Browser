@@ -6,7 +6,6 @@ setlocal enabledelayedexpansion
 set SESSION_ID=%RANDOM%
 set BUILD_DIR=%~dp0logs
 set BUILD_LOG=%BUILD_DIR%\build_%SESSION_ID%.log
-set DEBUG_LOG=%BUILD_DIR%\build_debug_%SESSION_ID%.log
 set LOCK_FILE=.build.lock
 set NO_PAUSE=0
 set TIMESTAMP=%DATE% %TIME%
@@ -23,12 +22,19 @@ for %%a in (%*) do (
 )
 
 :: Check for Lock
-if exist %LOCK_FILE% (
-    echo [!] BUILD LOCK DETECTED. Delete %LOCK_FILE% if no build is running.
-    if %NO_PAUSE%==0 pause
-    exit /b 1
+if exist "%LOCK_FILE%" (
+    :: Check if lock is stale (older than 5 minutes)
+    forfiles /P "%LOCK_FILE%" /C "cmd /c if @fdate==%DATE:~10,4%/%DATE:~4,2%/%DATE:~7,2% (if @ftime LSS %TIME:~0,5% exit /b 0) else (exit /b 0)" >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo [!] Stale build lock detected, removing...
+        rmdir /s /q "%LOCK_FILE%" 2>nul
+    ) else (
+        echo [!] BUILD LOCK DETECTED. Delete "%LOCK_FILE%" if no build is running.
+        if %NO_PAUSE%==0 pause
+        exit /b 1
+    )
 )
-mkdir %LOCK_FILE% 2>nul
+mkdir "%LOCK_FILE%" 2>nul
 if %errorlevel% neq 0 (
     echo [!] Failed to acquire build lock.
     if %NO_PAUSE%==0 pause
@@ -86,6 +92,12 @@ echo.
 
 :: Stage 4: Fix @veil/shared paths + Package (.exe)
 echo [4/4] Packaging...
+:: Kill any lingering processes
+taskkill /F /IM "Veil Browser.exe" /T >nul 2>&1
+taskkill /F /IM "app-builder.exe" /T >nul 2>&1
+timeout /t 2 /nobreak >nul
+:: Clean old dist-release dir to avoid file locks
+if exist "dist-release" rmdir /s /q "dist-release" >nul 2>&1
 :: Fix module paths for asar (single PowerShell call)
 powershell -Command "$files = Get-ChildItem -Path 'packages\main\dist' -Recurse -Filter '*.js'; foreach($f in $files) { $c = Get-Content $f.FullName -Raw; if($c -match '@veil/shared') { $depth = ($f.FullName -replace [regex]::Escape((Get-Location).Path+'\packages\main\dist\'),'').Split('\').Count - 1; $prefix = '../' * ($depth + 2); $c = $c -replace '@veil/shared', ($prefix + 'shared/dist'); Set-Content $f.FullName $c -NoNewline } }" >> "%BUILD_LOG%" 2>&1
 call npx electron-builder --win --x64 >> "%BUILD_LOG%" 2>&1
@@ -97,7 +109,7 @@ echo [OK]
 echo.
 
 :SUCCESS
-if exist %LOCK_FILE% rmdir /s /q %LOCK_FILE%
+if exist "%LOCK_FILE%" rmdir /s /q "%LOCK_FILE%"
 echo ========================================
 echo    BUILD SUCCESSFUL
 echo ========================================
@@ -106,7 +118,7 @@ if %NO_PAUSE%==0 pause > nul
 exit /b 0
 
 :FAIL
-if exist %LOCK_FILE% rmdir /s /q %LOCK_FILE%
+if exist "%LOCK_FILE%" rmdir /s /q "%LOCK_FILE%"
 echo ========================================
 echo    BUILD FAILED - see %BUILD_LOG%
 echo ========================================

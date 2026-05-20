@@ -34,7 +34,16 @@ export class Bookmark {
   }
 
   matchesUrl(url: string): boolean {
-    return this.url === url;
+    // Normalize trailing slashes and host case for comparison
+    const normalize = (u: string) => {
+      try {
+        const parsed = new URL(u);
+        return `${parsed.protocol}//${parsed.host.toLowerCase()}${parsed.pathname.replace(/\/+$/, '')}${parsed.search}${parsed.hash}`;
+      } catch {
+        return u.replace(/\/+$/, '');
+      }
+    };
+    return normalize(this.url) === normalize(url);
   }
 
   updateTitle(title: string): void {

@@ -1,17 +1,9 @@
-import { BaseWindow, WebContentsView, app } from 'electron';
-import * as path from 'path';
+import { BaseWindow, WebContentsView } from 'electron';
+import { ConfigManager } from './AppConfig';
 
 export class DebugWindow {
-  private static instance: DebugWindow | null = null;
   public window: BaseWindow | null = null;
   private webView: WebContentsView | null = null;
-
-  public static getInstance(): DebugWindow {
-    if (!DebugWindow.instance) {
-      DebugWindow.instance = new DebugWindow();
-    }
-    return DebugWindow.instance;
-  }
 
   public create(): BaseWindow {
     if (this.window && !this.window.isDestroyed()) {
@@ -19,9 +11,7 @@ export class DebugWindow {
       return this.window;
     }
 
-    const preloadPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'app.asar', 'packages', 'main', 'dist', 'preload.js')
-      : path.join(__dirname, '../preload.js');
+    const config = ConfigManager.getInstance();
 
     this.window = new BaseWindow({
       width: 700,
@@ -40,7 +30,7 @@ export class DebugWindow {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
-        preload: preloadPath,
+        preload: config.getPreloadPath(),
       },
     });
 
@@ -58,10 +48,7 @@ export class DebugWindow {
       }
     });
 
-    const isDev = process.env.NODE_ENV === 'development';
-    const url = isDev
-      ? 'http://localhost:3000/#/debug'
-      : `file://${path.join(app.getAppPath(), 'packages/renderer/dist/index.html')}#/debug`;
+    const url = `${ConfigManager.getInstance().getRendererUrl()}/#/debug`;
 
     this.webView.webContents.loadURL(url);
 
@@ -78,6 +65,12 @@ export class DebugWindow {
     });
 
     return this.window;
+  }
+
+  public addLog(log: unknown): void {
+    if (this.webView && this.window && !this.window.isDestroyed()) {
+      this.webView.webContents.send('veil:log', log);
+    }
   }
 
   public close() {

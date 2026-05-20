@@ -8,5 +8,5 @@
     "moduleResolution": "Node"
   },
   "include": ["index.ts", "domain/**/*.ts"],
-  "exclude": ["dist"]
+  "exclude": ["dist", "**/__tests__/**"]
 }

@@ -1,5 +1,5 @@
 import { WebContents } from 'electron';
-import { VeilState } from '@veil/shared';
+import { VeilState, VeilSettings } from '@veil/shared';
 import { EventHandler, DomainEvent } from './EventBus';
 import { ErrorSeverity, AppError } from './ErrorHandler';
 
@@ -33,6 +33,7 @@ export interface IPersistenceService {
   flush(): void;
   exists(filename: string): boolean;
   delete(filename: string): void;
+  getDataDir(): string;
 }
 
 export interface ILogger {

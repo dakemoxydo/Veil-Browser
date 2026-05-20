@@ -5,38 +5,43 @@ import { LogEntry, LogLevel } from '@veil/shared';
 type FilterType = 'ALL' | LogLevel;
 
 const levelColors: Record<LogLevel, string> = {
-  INFO: '#3b82f6',
-  WARN: '#f59e0b',
-  ERROR: '#ef4444',
+  INFO: 'var(--accent)',
+  WARN: 'var(--warning)',
+  ERROR: 'var(--danger)',
   ACTION: '#8b5cf6',
-  DEBUG: '#6b7280',
+  DEBUG: 'var(--text-muted)',
 };
 
 const levelBgColors: Record<LogLevel, string> = {
-  INFO: 'rgba(59, 130, 246, 0.15)',
+  INFO: 'var(--accent-focus)',
   WARN: 'rgba(245, 158, 11, 0.15)',
   ERROR: 'rgba(239, 68, 68, 0.15)',
   ACTION: 'rgba(139, 92, 246, 0.15)',
   DEBUG: 'rgba(107, 114, 128, 0.15)',
 };
 
-export const DebugPanel: React.FC = () => {
+export const DebugPanel: React.FC = React.memo(() => {
   const logs = useVeilStore((s) => s.logs);
   const clearLogs = useVeilStore((s) => s.clearLogs);
+  const isVisible = useVeilStore((s) => s.debugPanelVisible);
+  const toggleDebugPanel = useVeilStore((s) => s.toggleDebugPanel);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [filter, setFilter] = useState<FilterType>('ALL');
-  const [isMinimized, setIsMinimized] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const filteredLogs = filter === 'ALL' ? logs : logs.filter((log) => log.level === filter);
+  const filteredLogs = useMemo(() => {
+    if (filter === 'ALL') return logs;
+    return logs.filter((log) => log.level === filter);
+  }, [logs, filter]);
 
   const errorCount = useMemo(() => logs.filter((l) => l.level === 'ERROR').length, [logs]);
   const warnCount = useMemo(() => logs.filter((l) => l.level === 'WARN').length, [logs]);
 
   useEffect(() => {
-    if (!isMinimized && logsEndRef.current) {
+    if (isExpanded && isVisible && logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: 'instant' });
     }
-  }, [logs, isMinimized]);
+  }, [logs, isExpanded, isVisible]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -54,39 +59,63 @@ export const DebugPanel: React.FC = () => {
 
   const filters: FilterType[] = ['ALL', 'INFO', 'WARN', 'ERROR', 'ACTION', 'DEBUG'];
 
-  if (isMinimized) {
+  // Guard AFTER all hooks to avoid Rules of Hooks violation
+  if (!isVisible) return null;
+
+  if (!isExpanded) {
     return (
       <div
         className="debug-panel-minimized"
         role="button"
         tabIndex={0}
         aria-label="Expand debug console"
-        onClick={() => setIsMinimized(false)}
+        onClick={() => setIsExpanded(true)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setIsMinimized(false);
+            setIsExpanded(true);
           }
         }}
         style={{
           position: 'fixed',
           bottom: 20,
           right: 20,
-          background: 'rgba(26, 26, 46, 0.95)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '8px',
+          background: 'var(--glass-bg)',
+          backdropFilter: 'blur(var(--glass-blur))',
+          border: '1px solid var(--glass-border)',
+          borderRadius: 'var(--radius-md)',
           padding: '8px 16px',
-          color: 'rgba(240, 240, 255, 0.95)',
-          fontFamily: 'monospace',
-          fontSize: '12px',
+          color: 'var(--text-primary)',
+          fontFamily: 'var(--font-family-monospace)',
+          fontSize: 'var(--font-size-xs)',
           cursor: 'pointer',
           zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
         }}
       >
-        <span style={{ color: '#ef4444' }}>[{errorCount}]</span>
-        <span style={{ color: '#f59e0b', marginLeft: '8px' }}>[{warnCount}]</span>
-        <span style={{ marginLeft: '8px' }}>Debug ({logs.length})</span>
+        {errorCount > 0 && <span style={{ color: 'var(--danger)' }}>[{errorCount}]</span>}
+        {warnCount > 0 && <span style={{ color: 'var(--warning)' }}>[{warnCount}]</span>}
+        <span>Debug ({logs.length})</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleDebugPanel();
+          }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: '0 4px',
+            fontSize: 'var(--font-size-sm)',
+            lineHeight: 1,
+          }}
+          aria-label="Hide debug console"
+        >
+          ×
+        </button>
       </div>
     );
   }
@@ -100,16 +129,16 @@ export const DebugPanel: React.FC = () => {
         right: 20,
         width: '600px',
         height: '400px',
-        background: 'rgba(26, 26, 46, 0.95)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '12px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(var(--glass-blur))',
+        border: '1px solid var(--glass-border)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         zIndex: 9999,
-        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+        fontFamily: 'var(--font-family-monospace)',
       }}
     >
       <div
@@ -118,16 +147,15 @@ export const DebugPanel: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 16px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'rgba(0, 0, 0, 0.2)',
+          borderBottom: '1px solid var(--glass-border)',
+          background: 'rgba(0, 0, 0, 0.1)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '16px' }} aria-hidden="true">🔧</span>
-          <span style={{ color: 'rgba(240, 240, 255, 0.95)', fontWeight: 600, fontSize: '14px' }}>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>
             Debug Console
           </span>
-          <span style={{ color: 'rgba(240, 240, 255, 0.5)', fontSize: '12px' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>
             ({logs.length} entries)
           </span>
         </div>
@@ -136,53 +164,71 @@ export const DebugPanel: React.FC = () => {
             onClick={() => clearLogs()}
             style={{
               background: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '4px',
-              color: 'rgba(240, 240, 255, 0.7)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-secondary)',
               padding: '4px 8px',
-              fontSize: '11px',
+              fontSize: 'var(--font-size-xs)',
               cursor: 'pointer',
             }}
           >
             Clear
           </button>
           <button
-            onClick={() => setIsMinimized(true)}
+            onClick={() => setIsExpanded(false)}
             style={{
               background: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '4px',
-              color: 'rgba(240, 240, 255, 0.7)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-secondary)',
               padding: '4px 8px',
-              fontSize: '11px',
+              fontSize: 'var(--font-size-xs)',
               cursor: 'pointer',
             }}
           >
             Min
           </button>
+          <button
+            onClick={() => toggleDebugPanel()}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-secondary)',
+              padding: '4px 8px',
+              fontSize: 'var(--font-size-xs)',
+              cursor: 'pointer',
+            }}
+          >
+            Close
+          </button>
         </div>
       </div>
 
       <div
+        role="radiogroup"
+        aria-label="Log level filter"
         style={{
           display: 'flex',
           gap: '4px',
           padding: '8px 16px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          borderBottom: '1px solid var(--border-light)',
           background: 'rgba(0, 0, 0, 0.1)',
         }}
       >
         {filters.map((f) => (
           <button
             key={f}
+            role="radio"
+            aria-checked={filter === f}
             onClick={() => setFilter(f)}
             style={{
-              background: filter === f ? (f === 'ALL' ? 'rgba(255, 255, 255, 0.1)' : levelBgColors[f as LogLevel]) : 'transparent',
-              border: `1px solid ${filter === f ? (f === 'ALL' ? 'rgba(255, 255, 255, 0.3)' : levelColors[f as LogLevel]) : 'rgba(255, 255, 255, 0.1)'}`,
-              borderRadius: '4px',
-              color: filter === f ? (f === 'ALL' ? '#fff' : levelColors[f as LogLevel]) : 'rgba(240, 240, 255, 0.5)',
+              background: filter === f ? (f === 'ALL' ? 'var(--glass-border)' : levelBgColors[f as LogLevel]) : 'transparent',
+              border: `1px solid ${filter === f ? (f === 'ALL' ? 'var(--border)' : levelColors[f as LogLevel]) : 'var(--glass-border)'}`,
+              borderRadius: 'var(--radius-sm)',
+              color: filter === f ? (f === 'ALL' ? 'var(--text-primary)' : levelColors[f as LogLevel]) : 'var(--text-muted)',
               padding: '4px 10px',
-              fontSize: '11px',
+              fontSize: 'var(--font-size-xs)',
               cursor: 'pointer',
               fontFamily: 'inherit',
             }}
@@ -206,8 +252,8 @@ export const DebugPanel: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
-              color: 'rgba(240, 240, 255, 0.3)',
-              fontSize: '12px',
+              color: 'var(--text-muted)',
+              fontSize: 'var(--font-size-xs)',
             }}
           >
             No logs to display
@@ -221,7 +267,7 @@ export const DebugPanel: React.FC = () => {
       </div>
     </div>
   );
-};
+});
 
 interface LogItemProps {
   log: LogEntry;
@@ -245,9 +291,9 @@ const LogItem: React.FC<LogItemProps> = ({ log, formatTime, formatData }) => {
       } : undefined}
       style={{
         padding: '6px 16px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+        borderBottom: '1px solid var(--border-light)',
         cursor: log.data ? 'pointer' : 'default',
-        background: log.level === 'ERROR' ? 'rgba(239, 68, 68, 0.05)' : 'transparent',
+        background: log.level === 'ERROR' ? 'rgba(239, 68, 68, 0.08)' : 'transparent',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
@@ -255,29 +301,29 @@ const LogItem: React.FC<LogItemProps> = ({ log, formatTime, formatData }) => {
           style={{
             color: levelColors[log.level],
             fontWeight: 600,
-            fontSize: '11px',
+            fontSize: 'var(--font-size-xs)',
             minWidth: '50px',
           }}
         >
           {log.level}
         </span>
-        <span style={{ color: 'rgba(240, 240, 255, 0.4)', fontSize: '11px', minWidth: '70px' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', minWidth: '70px' }}>
           {formatTime(log.timestamp)}
         </span>
         <span
           style={{
-            color: 'rgba(139, 92, 246, 0.8)',
-            fontSize: '11px',
+            color: '#8b5cf6',
+            fontSize: 'var(--font-size-xs)',
             minWidth: '80px',
           }}
         >
           {log.source}
         </span>
-        <span style={{ color: 'rgba(240, 240, 255, 0.9)', fontSize: '12px', flex: 1, wordBreak: 'break-word' }}>
+        <span style={{ color: 'var(--text-primary)', fontSize: 'var(--font-size-xs)', flex: 1, wordBreak: 'break-word' }}>
           {log.message}
         </span>
         {!!log.data && (
-          <span style={{ color: 'rgba(240, 240, 255, 0.4)', fontSize: '10px' }} aria-hidden="true">
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }} aria-hidden="true">
             {expanded ? '▼' : '▶'}
           </span>
         )}
@@ -287,10 +333,10 @@ const LogItem: React.FC<LogItemProps> = ({ log, formatTime, formatData }) => {
           style={{
             marginTop: '8px',
             padding: '8px',
-            background: 'rgba(0, 0, 0, 0.3)',
-            borderRadius: '4px',
-            fontSize: '11px',
-            color: 'rgba(240, 240, 255, 0.7)',
+            background: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 'var(--font-size-xs)',
+            color: 'var(--text-secondary)',
             overflow: 'auto',
             maxHeight: '150px',
           }}

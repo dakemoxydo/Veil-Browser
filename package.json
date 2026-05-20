@@ -9,18 +9,18 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
-    "build": "tsc -b",
+    "build": "tsc -b && node scripts/fix-shared-paths.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx packages/main/**/*.ts packages/shared/**/*.ts --max-warnings=0 || true",
+    "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx packages/main/**/*.ts packages/shared/**/*.ts --max-warnings=0",
     "format": "prettier --write \"packages/**/*.{ts,tsx,css,json}\"",
-    "package": "electron-builder --win --x64"
+    "package": "npm run build && electron-builder --win --x64"
   },
   "build": {
     "appId": "com.veil.browser",
     "productName": "Veil Browser",
     "directories": {
-      "output": "release"
+      "output": "dist-release"
     },
     "files": [
       "packages/main/dist/**/*",

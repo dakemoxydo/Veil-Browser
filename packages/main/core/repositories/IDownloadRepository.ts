@@ -5,4 +5,5 @@ export interface IDownloadRepository {
   getById(id: string): Download | undefined;
   add(download: Download): void;
   update(download: Download): void;
+  remove(id: string): void;
 }

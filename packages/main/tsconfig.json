@@ -8,6 +8,6 @@
     "moduleResolution": "Node"
   },
   "include": ["index.ts", "preload.ts", "core/**/*.ts", "services/**/*.ts", "application/**/*.ts", "infrastructure/**/*.ts"],
-  "exclude": ["dist"],
+  "exclude": ["dist", "**/__tests__/**"],
   "references": [{ "path": "../shared" }]
 }

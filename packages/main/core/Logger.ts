@@ -1,7 +1,7 @@
 import { EventTypes } from './EventBus';
 import { IEventBus, ILogger } from './interfaces';
 
-export enum LogLevel {
+export enum LoggerLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
@@ -9,51 +9,51 @@ export enum LogLevel {
 }
 
 export class Logger implements ILogger {
-  private static globalLevel: LogLevel = LogLevel.DEBUG;
+  private static globalLevel: LoggerLevel = LoggerLevel.DEBUG;
 
   constructor(
     private source: string,
     private eventBus: IEventBus
   ) {}
 
-  public static setLevel(level: LogLevel): void {
+  public static setLevel(level: LoggerLevel): void {
     Logger.globalLevel = level;
   }
 
   public debug(message: string, data?: unknown): void {
-    this.log(LogLevel.DEBUG, message, data);
+    this.log(LoggerLevel.DEBUG, message, data);
   }
 
   public info(message: string, data?: unknown): void {
-    this.log(LogLevel.INFO, message, data);
+    this.log(LoggerLevel.INFO, message, data);
   }
 
   public warn(message: string, data?: unknown): void {
-    this.log(LogLevel.WARN, message, data);
+    this.log(LoggerLevel.WARN, message, data);
   }
 
   public error(message: string, data?: unknown): void {
-    this.log(LogLevel.ERROR, message, data);
+    this.log(LoggerLevel.ERROR, message, data);
   }
 
-  private log(level: LogLevel, message: string, data?: unknown): void {
+  private log(level: LoggerLevel, message: string, data?: unknown): void {
     if (level < Logger.globalLevel) return;
 
-    const timestamp = new Date().toISOString();
-    const levelName = LogLevel[level];
+    const timestamp = new Date(Date.now()).toISOString();
+    const levelName = LoggerLevel[level];
     const prefix = `[${timestamp}] [${levelName}] [${this.source}]`;
 
     switch (level) {
-      case LogLevel.DEBUG:
+      case LoggerLevel.DEBUG:
         console.debug(`${prefix} ${message}`, data !== undefined ? data : '');
         break;
-      case LogLevel.INFO:
+      case LoggerLevel.INFO:
         console.info(`${prefix} ${message}`, data !== undefined ? data : '');
         break;
-      case LogLevel.WARN:
+      case LoggerLevel.WARN:
         console.warn(`${prefix} ${message}`, data !== undefined ? data : '');
         break;
-      case LogLevel.ERROR:
+      case LoggerLevel.ERROR:
         console.error(`${prefix} ${message}`, data !== undefined ? data : '');
         break;
     }

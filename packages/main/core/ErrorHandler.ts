@@ -18,22 +18,10 @@ export interface AppError {
 }
 
 export class ErrorHandler implements IErrorHandler {
-  private static instance: ErrorHandler;
   private errors: AppError[] = [];
   private maxErrors = 1000;
 
   constructor(private eventBus: IEventBus) {}
-
-  /** @deprecated Use constructor injection instead */
-  public static getInstance(): ErrorHandler {
-    if (!ErrorHandler.instance) {
-      // Lazy import to avoid circular dependency
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { EventBus } = require('./EventBus');
-      ErrorHandler.instance = new ErrorHandler(new EventBus());
-    }
-    return ErrorHandler.instance;
-  }
 
   public handle(
     code: string,
@@ -65,8 +53,8 @@ export class ErrorHandler implements IErrorHandler {
 
     logMethod(`[${source}] ${code}: ${message}`, context || '');
 
-    // Emit event
-    this.eventBus.emit(EventTypes.DEBUG_ERROR, error);
+    // Emit event (fire-and-forget, but catch to prevent unhandled rejection)
+    this.eventBus.emit(EventTypes.DEBUG_ERROR, error).catch(() => {});
   }
 
   public handleAsync<T>(

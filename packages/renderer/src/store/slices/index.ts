@@ -12,3 +12,5 @@ export { createActionSlice } from './actionSlice';
 export type { ActionSlice } from './actionSlice';
 export { createViewSlice } from './viewSlice';
 export type { ViewSlice } from './viewSlice';
+export { createToastSlice } from './toastSlice';
+export type { ToastSlice } from './toastSlice';

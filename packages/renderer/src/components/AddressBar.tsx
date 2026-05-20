@@ -1,35 +1,103 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useVeilStore, selectActiveTab } from '../store/useVeilStore';
-import { getSearchUrl } from '@veil/shared';
+import { getSearchUrl, SuggestionItem } from '@veil/shared';
 import { DownloadPanel } from './DownloadPanel';
 
-export const AddressBar: React.FC = () => {
+export const AddressBar: React.FC = React.memo(() => {
   const [value, setValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const activeTab = useVeilStore(selectActiveTab);
   const activeTabId = useVeilStore((s) => s.activeTabId);
-  const settings = useVeilStore((s) => s.settings);
+  const bookmarks = useVeilStore((s) => s.bookmarks);
+  const searchEngine = useVeilStore((s) => s.settings.general.searchEngine);
+  const customSearchUrl = useVeilStore((s) => s.settings.general.customSearchUrl);
   const dispatch = useVeilStore((s) => s.dispatch);
+  const setView = useVeilStore((s) => s.setView);
+  const isBookmarked = activeTab ? bookmarks.some(b => b.url === activeTab.url) : false;
+  const lastSyncedUrl = useRef<string>('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Sync URL from active tab to input value
   useEffect(() => {
-    if (activeTab) {
+    if (!activeTab) return;
+    // Always sync on tab switch
+    setValue(activeTab.url);
+    lastSyncedUrl.current = activeTab.url;
+  }, [activeTabId]);
+
+  // Sync URL on in-tab navigation (only when not focused)
+  useEffect(() => {
+    if (!activeTab || isFocused) return;
+    if (activeTab.url !== lastSyncedUrl.current) {
       setValue(activeTab.url);
+      lastSyncedUrl.current = activeTab.url;
     }
-  }, [activeTabId, activeTab]);
+  }, [activeTab?.url, isFocused]);
+
+  // Debounced search for suggestions
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setSelectedIndex(-1);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await window.veil.searchSuggestions(value.trim());
+        setSuggestions(results);
+        setSelectedIndex(-1);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 150);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [value]);
+
+  const navigateTo = useCallback((url: string) => {
+    if (!activeTabId) return;
+    dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url } });
+    setSuggestions([]);
+    setSelectedIndex(-1);
+  }, [activeTabId, dispatch]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.min(prev + 1, suggestions.length - 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.max(prev - 1, -1));
+      return;
+    }
+    if (e.key === 'Escape') {
+      setSuggestions([]);
+      setSelectedIndex(-1);
+      return;
+    }
     if (e.key === 'Enter' && activeTabId) {
+      if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+        navigateTo(suggestions[selectedIndex].url);
+        return;
+      }
       const url = value.trim();
       if (!url) return;
-      const dangerous = ['file://', 'data:', 'javascript:', 'chrome://', 'chrome-extension://'];
-      if (dangerous.some(prefix => url.toLowerCase().startsWith(prefix))) return;
-      if (url.startsWith('http://') || url.startsWith('https://')) {
+      if (url.startsWith('veil://')) {
         dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url } });
-      } else if (/^[\w-]+(\.[\w-]+)+/.test(url) && !url.includes(' ')) {
+      } else if (url.startsWith('http://') || url.startsWith('https://')) {
+        dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url } });
+      } else if (/^(?!.*\.\w{1,4}$)[\w-]+(\.[\w-]+)+\.[a-zA-Z]{2,}$/.test(url) && !url.includes(' ')) {
         dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url: `https://${url}` } });
       } else {
-        dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url: getSearchUrl(url, settings.general.searchEngine, settings.general.customSearchUrl) } });
+        dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url: getSearchUrl(url, searchEngine, customSearchUrl) } });
       }
+      setSuggestions([]);
     }
   };
 
@@ -52,8 +120,11 @@ export const AddressBar: React.FC = () => {
   };
 
   const handleHome = () => {
+    setView('browser');
     if (activeTabId) {
       dispatch({ type: 'TAB_GO_HOME', payload: { id: activeTabId } });
+    } else {
+      dispatch({ type: 'TAB_NEW', payload: {} });
     }
   };
 
@@ -123,17 +194,12 @@ export const AddressBar: React.FC = () => {
         </button>
 
         <div
+          className="omnibox"
           style={{
             flex: 1,
             display: 'flex',
             alignItems: 'center',
-            height: 'var(--omnibox-height)',
-            borderRadius: 'var(--radius-pill)',
-            border: '1px solid var(--border)',
-            background: 'var(--bg-input)',
-            padding: '0 var(--space-3)',
             gap: 'var(--space-2)',
-            transition: 'border-color 150ms ease-out, box-shadow 150ms ease-out',
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -154,16 +220,23 @@ export const AddressBar: React.FC = () => {
             type="text"
             placeholder="Search or enter URL"
             aria-label="Address bar"
+            aria-expanded={suggestions.length > 0 && isFocused}
+            aria-controls="address-suggestions-listbox"
+            aria-activedescendant={selectedIndex >= 0 ? `suggestion-${selectedIndex}` : undefined}
+            aria-autocomplete="list"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={(e) => {
-              e.currentTarget.parentElement?.style.setProperty('border-color', 'transparent');
-              e.currentTarget.parentElement?.style.setProperty('box-shadow', '0 0 0 2px var(--accent-focus)');
+            onFocus={() => {
+              setIsFocused(true);
+              if (blurTimeoutRef.current) { clearTimeout(blurTimeoutRef.current); blurTimeoutRef.current = null; }
             }}
-            onBlur={(e) => {
-              e.currentTarget.parentElement?.style.setProperty('border-color', 'var(--border)');
-              e.currentTarget.parentElement?.style.setProperty('box-shadow', 'none');
+            onBlur={() => {
+              setIsFocused(false);
+              blurTimeoutRef.current = setTimeout(() => {
+                setSuggestions([]);
+                setSelectedIndex(-1);
+              }, 150);
             }}
             style={{
               flex: 1,
@@ -177,13 +250,51 @@ export const AddressBar: React.FC = () => {
           />
         </div>
 
-        <button className="toolbar-btn" aria-label="Bookmark this page">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button
+          className="toolbar-btn"
+          aria-label="Bookmark this page"
+          onClick={() => {
+            if (activeTab) {
+              dispatch({ type: 'BOOKMARK_ADD', payload: { url: activeTab.url, title: activeTab.title } });
+            }
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
           </svg>
         </button>
 
+        <button
+          className="toolbar-btn"
+          aria-label="Toggle reader mode"
+          onClick={async () => {
+            try {
+              await window.veil?.toggleReaderMode();
+            } catch (e) {
+              console.error('[AddressBar] toggleReaderMode:', e);
+            }
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>
+        </button>
+
         <DownloadPanel />
+        <button
+          className="toolbar-btn"
+          aria-label="Incognito"
+          onClick={() => window.veil?.openIncognito()}
+          title="Incognito (Ctrl+Shift+N)"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </button>
         <button
           className="toolbar-btn"
           aria-label="Settings"
@@ -198,6 +309,42 @@ export const AddressBar: React.FC = () => {
         </button>
       </div>
 
+      {suggestions.length > 0 && isFocused && (
+        <div
+          className="suggestions-dropdown"
+          ref={suggestionsRef}
+          id="address-suggestions-listbox"
+          role="listbox"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {suggestions.map((item, i) => (
+            <div
+              key={`${item.source}-${item.url}`}
+              id={`suggestion-${i}`}
+              role="option"
+              aria-selected={i === selectedIndex}
+              className={`suggestion-item${i === selectedIndex ? ' selected' : ''}`}
+              onMouseEnter={() => setSelectedIndex(i)}
+              onClick={() => navigateTo(item.url)}
+            >
+              <div className="suggestion-icon">
+                {item.source === 'bookmark' ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                ) : (
+                  <span className="suggestion-initial">{(item.title || item.url).charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div className="suggestion-content">
+                <span className="suggestion-title">{item.title || item.url}</span>
+                <span className="suggestion-url">{item.url}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {isLoading && (
         <div className="progress-bar">
           <div
@@ -208,4 +355,4 @@ export const AddressBar: React.FC = () => {
       )}
     </div>
   );
-};
+});

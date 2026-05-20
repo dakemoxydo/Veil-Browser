@@ -10,6 +10,9 @@ export class Tab {
   public canGoForward: boolean;
   public favicon?: string;
   public loadProgress: number;
+  public isPlayingAudio: boolean;
+  public muted: boolean;
+  public groupId?: string;
 
   private constructor(props: TabInfo) {
     this.id = props.id;
@@ -20,6 +23,9 @@ export class Tab {
     this.canGoForward = props.canGoForward;
     this.favicon = props.favicon;
     this.loadProgress = props.loadProgress;
+    this.isPlayingAudio = props.isPlayingAudio ?? false;
+    this.muted = props.muted ?? false;
+    this.groupId = props.groupId;
   }
 
   static create(url: string): Tab {
@@ -31,6 +37,8 @@ export class Tab {
       canGoBack: false,
       canGoForward: false,
       loadProgress: 0,
+      isPlayingAudio: false,
+      muted: false,
     });
   }
 
@@ -71,6 +79,18 @@ export class Tab {
     this.loadProgress = Math.max(0, Math.min(100, progress));
   }
 
+  setAudioState(isPlaying: boolean): void {
+    this.isPlayingAudio = isPlaying;
+  }
+
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+  }
+
+  setGroupId(groupId: string | undefined): void {
+    this.groupId = groupId;
+  }
+
   toJSON(): TabInfo {
     return {
       id: this.id,
@@ -81,6 +101,9 @@ export class Tab {
       canGoForward: this.canGoForward,
       favicon: this.favicon,
       loadProgress: this.loadProgress,
+      isPlayingAudio: this.isPlayingAudio,
+      muted: this.muted,
+      groupId: this.groupId,
     };
   }
 }
