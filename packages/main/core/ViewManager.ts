@@ -76,6 +76,9 @@ export class ViewManager {
     // Track LRU order
     this.materializedOrder.push(id);
 
+    // Evict oldest non-focused views if we exceed the limit (A25)
+    this.evictIfNecessary(id);
+
     return view;
   }
 
@@ -364,18 +367,7 @@ export class ViewManager {
 
     addTrackedListener('did-start-loading', () => {
       callbacks.onStartLoading();
-      // Simulate progress since estimated-progress is not always available
-      let progress = 0;
-      const progressTimer = setInterval(() => {
-        progress = Math.min(progress + Math.random() * 20, 90);
-        callbacks.onProgress(progress);
-      }, 500);
-      // Store cleanup for the timer
-      cleanups.push(() => clearInterval(progressTimer));
-      // Also clear on stop-loading via a one-time listener
-      const stopHandler = () => clearInterval(progressTimer);
-      view.webContents.once('did-stop-loading', stopHandler);
-      cleanups.push(() => view.webContents.removeListener('did-stop-loading', stopHandler));
+      callbacks.onProgress(0);
     });
 
     addTrackedListener('did-stop-loading', () => {

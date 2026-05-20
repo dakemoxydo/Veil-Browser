@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsView, Menu } from 'electron';
+import { BrowserWindow, Menu } from 'electron';
 import { ViewManager } from './ViewManager';
 import { ConfigManager } from './AppConfig';
 
@@ -31,13 +31,16 @@ export class VeilWindow {
     this.window.webContents.on('will-navigate', (event, url) => {
       try {
         const parsed = new URL(url);
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:' && parsed.protocol !== 'file:') {
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
           event.preventDefault();
         }
       } catch {
         event.preventDefault();
       }
     });
+
+    // Block popups from the shell window
+    this.window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
     // Show window when content is loaded
     this.window.webContents.once('did-finish-load', () => {

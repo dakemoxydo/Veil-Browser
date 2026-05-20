@@ -2,6 +2,7 @@ import { VeilAction } from '@veil/shared';
 import { IEventBus, IErrorHandler, IStateBroadcaster, ILogger } from '../core/interfaces';
 import { ISession } from '../core/ports/ISession';
 import { BaseService } from '../core/BaseService';
+import { getRegistrableDomain } from './utils/domain';
 
 interface SettingsServiceLike {
   getSettings(): {
@@ -26,6 +27,9 @@ export class AdblockService extends BaseService {
   private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
   private customDomains = new Set<string>();
   private customListUrls: string[] = [];
+  // Per-list resolved domains for efficient removal (A11)
+  private customListDomains = new Map<string, Set<string>>();
+  private static readonly MAX_TOP_DOMAINS = 200;
 
   constructor(
     private session: ISession,
@@ -59,10 +63,10 @@ export class AdblockService extends BaseService {
     'vidible.tv', 'yieldlab.net', 'zedo.com', 'zemanta.com',
   ]);
 
-  /** Domains used for user tracking / analytics */
-  private trackerSet = new Set([
-    'google-analytics.com', 'googletagmanager.com', 'facebook.com/tr',
-    'twitter.com/i/adsct', 'hotjar.com', 'mixpanel.com', 'segment.com',
+  /** Tracker hostnames — matched via eTLD+1 to catch subdomains (A9) */
+  private trackerHosts = new Set([
+    'google-analytics.com', 'googletagmanager.com',
+    'hotjar.com', 'mixpanel.com', 'segment.com',
     'amplitude.com', 'scorecardresearch.com', 'quantserve.com',
     'newrelic.com', 'nr-data.net', 'matomo.org', 'piwik.net',
     'clarity.ms', 'mouseflow.com', 'fullstory.com', 'heap.io',
@@ -71,10 +75,10 @@ export class AdblockService extends BaseService {
     'countly.com', 'crashlytics.com', 'customer.io', 'databrain.com',
     'datadog.com', 'demandbase.com', 'dynatrace.com', 'elastic.co',
     'engagio.com', 'facebook.net', 'gemius.com', 'getblueshift.com',
-    'github.com/collect', 'honeybadger.io', 'hubspot.com', 'inspectlet.com',
+    'honeybadger.io', 'hubspot.com', 'inspectlet.com',
     'ipinfo.io', 'keen.io', 'kissmetrics.com', 'launchdarkly.com',
     'leanplum.com', 'localytics.com', 'logrocket.com', 'marketo.com',
-    'moengage.com', 'optimizely.com', 'osano.com', 'pendo.io',
+    'moengage.com', 'optimizely.com', 'osano.com',
     'qualaroo.com', 'qualtrics.com', 'quantcast.com', 'rollbar.com',
     'segment.io', 'sentry.io', 'snapengage.com', 'stats.wp.com',
     'statuspage.io', 'sumo.com', 'taplytics.com', 'tealiumiq.com',
@@ -83,14 +87,23 @@ export class AdblockService extends BaseService {
     'abtasty.com', 'bazaarvoice.com', 'blueconic.com', 'bownow.com',
     'calltrk.com', 'callrail.com', 'cdn.segment.com', 'clicktale.com',
     'convert.com', 'crazyegg.com', 'evergage.com', 'foresee.com',
-    'go-mpulse.net', 'gtag.js', 'heapanalytics.com', 'hs-analytics.net',
+    'go-mpulse.net', 'heapanalytics.com', 'hs-analytics.net',
     'hsadspixel.net', 'intercomcdn.com', 'kameleoon.com', 'leadfeeder.com',
-    'luckyorange.com', 'mouseflow.com', 'nerdwallet.com', 'onetrust.com',
+    'luckyorange.com', 'nerdwallet.com', 'onetrust.com',
     'pingdom.net', 'plausible.io', 'rudderstack.com', 'scarf.sh',
     'segmentify.com', 'snap.licdn.com', 'statcounter.com', 'survicate.com',
-    't.co', 'tracking.feedpress.it', 'trkn.us', 'unpkg.com/@sentry',
-    'userreport.com', 'vimeo.com/api', 'webtrekk.net', 'yandex.ru/metrika',
+    't.co', 'tracking.feedpress.it', 'trkn.us',
+    'userreport.com', 'webtrekk.net',
   ]);
+
+  /** Path-based tracker rules — matched by hostname suffix + path prefix (A9) */
+  private trackerPathRules: Array<{ host: string; pathPrefix: string }> = [
+    { host: 'facebook.com', pathPrefix: '/tr' },
+    { host: 'twitter.com', pathPrefix: '/i/adsct' },
+    { host: 'github.com', pathPrefix: '/collect' },
+    { host: 'vimeo.com', pathPrefix: '/api' },
+    { host: 'yandex.ru', pathPrefix: '/metrika' },
+  ];
 
   public async init() {
     const privacy = this.settingsService.getSettings().privacy;
@@ -123,13 +136,15 @@ export class AdblockService extends BaseService {
         const hostname = parsedUrl.hostname;
 
         // Check ad block list (controlled by adblockEnabled)
+        // Use eTLD+1 matching to catch subdomains like ads.doubleclick.net
         if (this.adblockEnabled) {
-          const isAd = this.adBlockSet.has(hostname);
+          const adDomain = getRegistrableDomain(hostname);
+          const isAd = this.adBlockSet.has(hostname) || this.adBlockSet.has(adDomain);
           if (isAd) {
             this.blockedCount++;
             this.blockedCurrentPage++;
             this.blockedAds++;
-            this.topDomains.set(hostname, (this.topDomains.get(hostname) || 0) + 1);
+            this.recordTopDomain(hostname);
             this.scheduleBroadcast();
             this.logger.debug(`Blocked ad: ${url}`);
             return callback({ cancel: true });
@@ -138,25 +153,36 @@ export class AdblockService extends BaseService {
 
         // Check tracker list (controlled by blockTrackers)
         if (this.blockTrackers) {
-          const hostnameWithPath = hostname + parsedUrl.pathname;
-          const isTracker = this.trackerSet.has(hostname) || this.trackerSet.has(hostnameWithPath);
-          if (isTracker) {
+          const trackerDomain = getRegistrableDomain(hostname);
+          const isHostTracker = this.trackerHosts.has(hostname) || this.trackerHosts.has(trackerDomain);
+          let isPathTracker = false;
+          if (!isHostTracker) {
+            const pathname = parsedUrl.pathname;
+            for (const rule of this.trackerPathRules) {
+              if (hostname.endsWith(rule.host) && pathname.startsWith('/' + rule.pathPrefix)) {
+                isPathTracker = true;
+                break;
+              }
+            }
+          }
+          if (isHostTracker || isPathTracker) {
             this.blockedCount++;
             this.blockedCurrentPage++;
             this.blockedTrackers++;
-            this.topDomains.set(hostname, (this.topDomains.get(hostname) || 0) + 1);
+            this.recordTopDomain(hostname);
             this.scheduleBroadcast();
             this.logger.debug(`Blocked tracker: ${url}`);
             return callback({ cancel: true });
           }
         }
 
-        // Check custom adblock lists
-        if (this.customDomains.has(hostname)) {
+        // Check custom adblock lists (eTLD+1 for subdomain matching)
+        const customDomain = getRegistrableDomain(hostname);
+        if (this.customDomains.has(hostname) || this.customDomains.has(customDomain)) {
           this.blockedCount++;
           this.blockedCurrentPage++;
           this.blockedAds++;
-          this.topDomains.set(hostname, (this.topDomains.get(hostname) || 0) + 1);
+          this.recordTopDomain(hostname);
           this.scheduleBroadcast();
           this.logger.debug(`Blocked by custom list: ${url}`);
           return callback({ cancel: true });
@@ -186,6 +212,22 @@ export class AdblockService extends BaseService {
       this.broadcastTimer = null;
       this.broadcastStats();
     }, 100);
+  }
+
+  /** Record a blocked domain in topDomains, evicting lowest-count entry when over limit (A10) */
+  private recordTopDomain(hostname: string): void {
+    this.topDomains.set(hostname, (this.topDomains.get(hostname) || 0) + 1);
+    if (this.topDomains.size > AdblockService.MAX_TOP_DOMAINS) {
+      let minKey = '';
+      let minCount = Infinity;
+      for (const [key, count] of this.topDomains) {
+        if (count < minCount) {
+          minCount = count;
+          minKey = key;
+        }
+      }
+      if (minKey) this.topDomains.delete(minKey);
+    }
   }
 
   private broadcastStats() {
@@ -308,7 +350,9 @@ export class AdblockService extends BaseService {
       return false;
     }
 
-    // Add domains to the custom set
+    // Add domains to the custom set and track per-list (A11)
+    const domainSet = new Set(domains);
+    this.customListDomains.set(url, domainSet);
     for (const domain of domains) {
       this.customDomains.add(domain);
     }
@@ -320,7 +364,7 @@ export class AdblockService extends BaseService {
   }
 
   /**
-   * Remove a custom adblock list URL and reload remaining lists.
+   * Remove a custom adblock list URL — subtract its domains from the set (A11).
    */
   public async removeCustomList(url: string): Promise<boolean> {
     const idx = this.customListUrls.indexOf(url);
@@ -328,13 +372,13 @@ export class AdblockService extends BaseService {
 
     this.customListUrls.splice(idx, 1);
 
-    // Rebuild custom domains from remaining lists
-    this.customDomains.clear();
-    for (const listUrl of this.customListUrls) {
-      const domains = await this.loadCustomList(listUrl);
-      for (const domain of domains) {
-        this.customDomains.add(domain);
+    // Subtract this list's domains from the set
+    const listDomains = this.customListDomains.get(url);
+    if (listDomains) {
+      for (const domain of listDomains) {
+        this.customDomains.delete(domain);
       }
+      this.customListDomains.delete(url);
     }
 
     this.logger.info(`Removed custom list: ${url} (remaining domains: ${this.customDomains.size})`);

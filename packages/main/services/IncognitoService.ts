@@ -32,6 +32,35 @@ export class IncognitoService extends BaseService {
     // Ephemeral session — data never written to disk
     const incognitoSession = session.fromPartition(this.partitionName, { cache: false });
 
+    // Apply session hardening (A23)
+    const ALLOWED_PERMISSIONS = new Set(['clipboard-read', 'clipboard-sanitized-write']);
+    incognitoSession.setPermissionRequestHandler((_wc, permission, callback) => {
+      callback(ALLOWED_PERMISSIONS.has(permission));
+    });
+    incognitoSession.setPermissionCheckHandler((_wc, permission) => {
+      return ALLOWED_PERMISSIONS.has(permission);
+    });
+    // Security headers on all HTTP responses
+    incognitoSession.webRequest.onHeadersReceived(
+      { urls: ['*://*/*'] },
+      (details, callback) => {
+        const responseHeaders = details.responseHeaders || {};
+        responseHeaders['X-Content-Type-Options'] = ['nosniff'];
+        responseHeaders['Referrer-Policy'] = ['strict-origin-when-cross-origin'];
+        responseHeaders['Permissions-Policy'] = ['camera=(), microphone=(), geolocation=(), interest-cohort=()'];
+        callback({ responseHeaders });
+      }
+    );
+    // DNT header
+    incognitoSession.webRequest.onBeforeSendHeaders(
+      { urls: ['*://*/*'] },
+      (details, callback) => {
+        const requestHeaders = details.requestHeaders || {};
+        requestHeaders['DNT'] = '1';
+        callback({ requestHeaders });
+      }
+    );
+
     const config = ConfigManager.getInstance();
 
     // Use BrowserWindow's own webContents — no separate WebContentsView
@@ -46,7 +75,7 @@ export class IncognitoService extends BaseService {
       show: false,
       title: 'Veil Browser — Incognito',
       webPreferences: {
-        preload: config.getPreloadPath().replace('preload.js', 'preload-incognito.js'),
+        preload: config.getIncognitoPreloadPath(),
         contextIsolation: true,
         sandbox: true,
         session: incognitoSession,

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Tab, Bookmark, DEFAULT_SETTINGS } from '@veil/shared';
 import { CreateTabUseCase } from '../CreateTabUseCase';
 import { CloseTabUseCase } from '../CloseTabUseCase';

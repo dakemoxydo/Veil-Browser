@@ -50,7 +50,7 @@ export class TabService extends BaseService {
    * Restores saved tabs without creating new ones via action dispatch.
    * Materializes up to MAX_MATERIALIZED_TABS views immediately; the rest are deferred.
    */
-  public restoreTabs(savedTabs: TabInfo[], activeTabId: string | null): void {
+  public restoreTabs(savedTabs: TabInfo[], activeTabId: string | null, pinnedIds: string[] = [], mutedIds: string[] = [], savedTabGroups: TabGroup[] = []): void {
     let materialized = 0;
 
     for (const tabInfo of savedTabs) {
@@ -79,6 +79,18 @@ export class TabService extends BaseService {
       this.viewProvider.hideAllViews();
       this.viewProvider.focusView(targetId);
     }
+
+    // Restore persisted UI state (A4)
+    for (const id of pinnedIds) {
+      if (this.tabRepo.getById(id)) this.pinnedTabs.add(id);
+    }
+    for (const id of mutedIds) {
+      if (this.tabRepo.getById(id)) {
+        this.mutedTabs.add(id);
+        this.viewProvider.setAudioMuted(id, true);
+      }
+    }
+    this.tabGroups = savedTabGroups;
 
     this.broadcastState();
   }
@@ -131,7 +143,7 @@ export class TabService extends BaseService {
     'veil://home', 'veil://history', 'veil://version',
     'veil://bookmarks', 'veil://downloads', 'veil://privacy',
     'veil://shortcuts', 'veil://settings', 'veil://cookies',
-    'veil://permissions', 'veil://certificates',
+    'veil://permissions', 'veil://certificates', 'veil://passwords',
   ]);
 
   private isSafeUrl(url: string): boolean {
@@ -298,13 +310,14 @@ export class TabService extends BaseService {
         if (!id) return;
         const tab = this.tabRepo.getById(id);
         if (tab) {
-          const info = tab.toJSON();
-          // Toggle pinned state — store in a Map for persistence
+          // Toggle pinned state
           if (!this.pinnedTabs.has(id)) {
             this.pinnedTabs.add(id);
           } else {
             this.pinnedTabs.delete(id);
           }
+          // Persist UI state (A4)
+          this.tabRepo.setPinnedIds([...this.pinnedTabs]);
           this.broadcastState();
         }
         break;
@@ -320,6 +333,8 @@ export class TabService extends BaseService {
           this.mutedTabs.delete(id);
         }
         this.viewProvider.setAudioMuted(id, muted);
+        // Persist UI state (A4)
+        this.tabRepo.setMutedIds([...this.mutedTabs]);
         this.broadcastState();
         break;
       }
@@ -333,7 +348,7 @@ export class TabService extends BaseService {
             try {
               this.closeTab.execute(tab.id);
               this.registeredListeners.delete(tab.id);
-            } catch {}
+            } catch { /* tab already closed */ }
           }
         }
         this.focusTab.execute(keepId);
@@ -351,7 +366,7 @@ export class TabService extends BaseService {
           try {
             this.closeTab.execute(allTabs[i].id);
             this.registeredListeners.delete(allTabs[i].id);
-          } catch {}
+          } catch { /* tab already closed */ }
         }
         this.broadcastState();
         break;
@@ -368,6 +383,7 @@ export class TabService extends BaseService {
           collapsed: false,
         };
         this.tabGroups.push(group);
+        this.tabRepo.setTabGroups(this.tabGroups);
         this.broadcastState();
         break;
       }
@@ -382,6 +398,7 @@ export class TabService extends BaseService {
             tab.setGroupId(undefined);
           }
         }
+        this.tabRepo.setTabGroups(this.tabGroups);
         this.broadcastState();
         break;
       }
@@ -392,6 +409,7 @@ export class TabService extends BaseService {
         const group = this.tabGroups.find(g => g.id === id);
         if (group) {
           group.name = name.trim().slice(0, 100);
+          this.tabRepo.setTabGroups(this.tabGroups);
           this.broadcastState();
         }
         break;
@@ -403,6 +421,7 @@ export class TabService extends BaseService {
         const toggleGroup = this.tabGroups.find(g => g.id === toggleId);
         if (toggleGroup) {
           toggleGroup.collapsed = !toggleGroup.collapsed;
+          this.tabRepo.setTabGroups(this.tabGroups);
           this.broadcastState();
         }
         break;
@@ -469,7 +488,7 @@ export class TabService extends BaseService {
       onNavigate: (url, canGoBack, canGoForward) => {
         const tab = this.tabRepo.getById(tabId);
         if (tab) {
-          tab.url = url;
+          tab.setUrl(url);
           tab.updateNavigationState(canGoBack, canGoForward);
           this.broadcastState();
         }

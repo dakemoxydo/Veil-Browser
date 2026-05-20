@@ -8,13 +8,18 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "npm run dev:build && concurrently -k -n MAIN,RENDERER,ELECTRON \"tsc -b -w\" \"npm:dev -w @veil/renderer\" \"wait-on http://localhost:3000 && electron .\"",
+    "dev:build": "tsc -b && node scripts/fix-shared-paths.js",
     "build": "tsc -b && node scripts/fix-shared-paths.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint packages/*/src/**/*.ts packages/*/src/**/*.tsx packages/main/**/*.ts packages/shared/**/*.ts --max-warnings=0",
+    "lint": "eslint \"packages/**/*.{ts,tsx}\" --max-warnings=0",
     "format": "prettier --write \"packages/**/*.{ts,tsx,css,json}\"",
-    "package": "npm run build && electron-builder --win --x64"
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win --x64",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:linux": "npm run build && electron-builder --linux",
+    "clean": "rimraf packages/*/dist dist-release"
   },
   "build": {
     "appId": "com.veil.browser",
@@ -31,6 +36,12 @@
     "win": {
       "target": "portable",
       "artifactName": "Veil-Browser-v${version}.${ext}"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
     }
   },
   "keywords": [
@@ -48,15 +59,18 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.0",
     "electron": "^42.1.0",
     "electron-builder": "^26.8.1",
     "eslint": "^10.4.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.8.3",
+    "rimraf": "^6.0.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.3",
     "vite": "^8.0.0",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "wait-on": "^8.0.3"
   },
   "dependencies": {
     "electron-chrome-extensions": "^4.9.0",

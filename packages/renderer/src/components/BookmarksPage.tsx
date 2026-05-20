@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { useVeilStore } from '../store/useVeilStore';
 import { BookmarkItem } from '@veil/shared';
 import { EmptyState } from './EmptyState';
-import { Skeleton } from './Skeleton';
 
 export const BookmarksPage: React.FC = React.memo(() => {
   const bookmarks = useVeilStore((s) => s.bookmarks);

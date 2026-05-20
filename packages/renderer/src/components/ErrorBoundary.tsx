@@ -28,10 +28,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
     this.setState({ hasError: false, error: null });
   };
 
+  private handleCopyError = () => {
+    const text = this.state.error?.stack || this.state.error?.message || 'Unknown error';
+    navigator.clipboard.writeText(text).catch(() => {});
+  };
+
   render() {
     if (this.state.hasError) {
       return (
-        <div role="alert" style={{
+        <div role="alert" aria-live="assertive" style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -53,20 +58,36 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, textAlign: 'center', maxWidth: 400 }}>
             {this.state.error?.message || 'An unexpected error occurred'}
           </div>
-          <button
-            onClick={this.handleReset}
-            style={{
-              padding: '8px 20px',
-              background: 'var(--accent)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 13,
-              cursor: 'pointer',
-            }}
-          >
-            Try again
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={this.handleReset}
+              style={{
+                padding: '8px 20px',
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              Try again
+            </button>
+            <button
+              onClick={this.handleCopyError}
+              style={{
+                padding: '8px 20px',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              Copy error
+            </button>
+          </div>
         </div>
       );
     }

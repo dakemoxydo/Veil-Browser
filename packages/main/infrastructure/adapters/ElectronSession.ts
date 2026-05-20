@@ -1,4 +1,4 @@
-import { session, Session, DownloadItem as ElectronDownloadItem, OnBeforeSendHeadersListenerDetails, OnBeforeRequestListenerDetails, Cookies } from 'electron';
+import { session, Session, DownloadItem as ElectronDownloadItem, OnBeforeSendHeadersListenerDetails, OnBeforeRequestListenerDetails } from 'electron';
 import { ISession, DownloadEvent, CookieChangeInfo, ExtensionInfo } from '../../core/ports/ISession';
 
 class DownloadEventAdapter implements DownloadEvent {
@@ -187,6 +187,10 @@ export class ElectronSession implements ISession {
     } else {
       this.session.setPermissionRequestHandler(null);
     }
+  }
+
+  setPreloads(paths: string[]): void {
+    this.session.setPreloads(paths);
   }
 
   destroy(): void {

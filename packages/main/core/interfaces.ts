@@ -1,5 +1,5 @@
 import { WebContents } from 'electron';
-import { VeilState, VeilSettings } from '@veil/shared';
+import { VeilState } from '@veil/shared';
 import { EventHandler, DomainEvent } from './EventBus';
 import { ErrorSeverity, AppError } from './ErrorHandler';
 

@@ -78,14 +78,6 @@ export const TabBar: React.FC = React.memo(() => {
     }
   };
 
-  const handleCloseKeyDown = (tabId: string) => (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      e.stopPropagation();
-      dispatch({ type: 'TAB_CLOSE', payload: { id: tabId } });
-    }
-  };
-
   const handleDragStart = (tabId: string) => (e: React.DragEvent) => {
     draggedTabId.current = tabId;
     e.dataTransfer.effectAllowed = 'move';
@@ -131,7 +123,7 @@ export const TabBar: React.FC = React.memo(() => {
     try { await window.veil?.close(); } catch (e) { console.error('[TabBar] Close:', e); }
   };
 
-  const handleCreateGroup = (tabId: string) => {
+  const handleCreateGroup = (_tabId: string) => {
     const name = prompt('Group name:');
     if (!name) return;
     const color = `#${Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0')}`;
@@ -235,19 +227,17 @@ export const TabBar: React.FC = React.memo(() => {
         >
           {tab.title}
         </div>
-        <div
+        <button
+          type="button"
           className="close-btn"
-          role="button"
-          tabIndex={0}
           aria-label={`Close ${tab.title}`}
           onClick={(e) => {
             e.stopPropagation();
             dispatch({ type: 'TAB_CLOSE', payload: { id: tab.id } });
           }}
-          onKeyDown={handleCloseKeyDown(tab.id)}
         >
           &times;
-        </div>
+        </button>
       </div>
     );
   };
@@ -286,7 +276,6 @@ export const TabBar: React.FC = React.memo(() => {
           const group = tabGroups.find(g => g.id === groupId);
           if (!group) return groupTabs.map(renderTab);
           const isCollapsed = group.collapsed;
-          const hasActive = groupTabs.some(t => t.id === activeTabId);
 
           return (
             <div key={groupId} style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>

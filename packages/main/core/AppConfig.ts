@@ -103,6 +103,13 @@ export class ConfigManager {
     return path.join(__dirname, '../preload.js');
   }
 
+  public getIncognitoPreloadPath(): string {
+    if (this.config.isPackaged) {
+      return path.join(process.resourcesPath, 'app.asar', 'packages', 'main', 'dist', 'preload-incognito.js');
+    }
+    return path.join(__dirname, '../preload-incognito.js');
+  }
+
   public updateDev(dev: Partial<DevConfig>): void {
     this.config.dev = { ...this.config.dev, ...dev };
   }

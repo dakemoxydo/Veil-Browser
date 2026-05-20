@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getSearchUrl, DEFAULT_SETTINGS } from '../index';
+import { getSearchUrl, looksLikeUrl, DEFAULT_SETTINGS } from '../index';
 
 describe('getSearchUrl', () => {
   it('returns DuckDuckGo URL for duckduckgo engine', () => {
@@ -51,5 +51,55 @@ describe('DEFAULT_SETTINGS', () => {
   it('has all required appearance fields', () => {
     expect(DEFAULT_SETTINGS.appearance).toBeDefined();
     expect(typeof DEFAULT_SETTINGS.appearance.showBookmarksBar).toBe('boolean');
+  });
+});
+
+describe('looksLikeUrl', () => {
+  it('should recognize simple domain', () => {
+    expect(looksLikeUrl('google.com')).toBe(true);
+  });
+
+  it('should recognize www subdomain', () => {
+    expect(looksLikeUrl('www.google.com')).toBe(true);
+  });
+
+  it('should recognize subdomain.example.com', () => {
+    expect(looksLikeUrl('subdomain.example.com')).toBe(true);
+  });
+
+  it('should recognize domain with path', () => {
+    expect(looksLikeUrl('github.com/repo')).toBe(true);
+  });
+
+  it('should recognize localhost', () => {
+    expect(looksLikeUrl('localhost')).toBe(true);
+  });
+
+  it('should recognize localhost with port', () => {
+    expect(looksLikeUrl('localhost:3000')).toBe(true);
+  });
+
+  it('should recognize IP with port', () => {
+    expect(looksLikeUrl('127.0.0.1:8080')).toBe(true);
+  });
+
+  it('should recognize URL with scheme', () => {
+    expect(looksLikeUrl('https://google.com')).toBe(true);
+  });
+
+  it('should reject input with spaces', () => {
+    expect(looksLikeUrl('with space.com')).toBe(false);
+  });
+
+  it('should reject plain text query', () => {
+    expect(looksLikeUrl('hello world')).toBe(false);
+  });
+
+  it('should reject empty string', () => {
+    expect(looksLikeUrl('')).toBe(false);
+  });
+
+  it('should reject single word without dots', () => {
+    expect(looksLikeUrl('searchterm')).toBe(false);
   });
 });

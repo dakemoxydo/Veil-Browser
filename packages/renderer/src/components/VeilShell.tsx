@@ -209,7 +209,27 @@ export const VeilShell: React.FC = () => {
         '--accent-focus': `${accentColor}33`,
       } as React.CSSProperties}
     >
-      <a href="#browser-view-container" className="sr-only" style={{position:'absolute',left:'-9999px'}}>Skip to content</a>
+      <a
+        href="#browser-view-container"
+        className="skip-link"
+        style={{
+          position: 'absolute',
+          top: '-40px',
+          left: 0,
+          padding: '8px 16px',
+          background: 'var(--accent)',
+          color: '#fff',
+          zIndex: 99999,
+          fontSize: 'var(--font-size-sm)',
+          textDecoration: 'none',
+          borderRadius: '0 0 var(--radius-md) 0',
+          transition: 'top 150ms ease-out',
+        }}
+        onFocus={(e) => { e.currentTarget.style.top = '0'; }}
+        onBlur={(e) => { e.currentTarget.style.top = '-40px'; }}
+      >
+        Skip to content
+      </a>
       {!isFullscreen && (
       <header role="banner" className="glass">
         <div style={{ flexShrink: 0 }}>

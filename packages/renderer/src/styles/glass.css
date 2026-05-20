@@ -23,9 +23,9 @@
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   cursor: pointer;
   transition: background var(--transition-fast);
-  width: 180px;
-  min-width: 180px;
-  max-width: 180px;
+  flex: 1 1 0;
+  min-width: 80px;
+  max-width: 220px;
   position: relative;
   border: 1px solid transparent;
   border-bottom: none;
@@ -63,6 +63,12 @@
 .tab-item .close-btn:hover {
   opacity: 1;
   background: var(--bg-active);
+}
+
+/* Tab bar scroll fallback for overflow (C39) */
+.tab-bar-container > div:first-child {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 /* Navigation button */
@@ -223,6 +229,18 @@
   height: 100%;
   background: var(--accent);
   transition: width 0.3s ease;
+}
+
+/* Indeterminate progress animation (C44) */
+.progress-indeterminate {
+  width: 30%;
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(200%); }
+  100% { transform: translateX(400%); }
 }
 
 /* Quick link */

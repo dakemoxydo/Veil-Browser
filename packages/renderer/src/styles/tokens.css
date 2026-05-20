@@ -202,6 +202,41 @@ input:focus, select:focus {
 
 /* === Light Theme === */
 
+/* Default to light when no explicit theme is set and user prefers light (C40) */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg-app: #f8f9fa;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f1f3f4;
+    --bg-hover: #e8eaed;
+    --bg-active: #dadce0;
+    --bg-input: #ffffff;
+    --bg-tab-active: #ffffff;
+    --bg-tab-inactive: #e8eaed;
+    --bg-toolbar: #f1f3f4;
+    --bg-card: var(--bg-elevated);
+    --text-primary: #202124;
+    --text-secondary: #5f6368;
+    --text-muted: #80868b;
+    --accent: #1a73e8;
+    --accent-hover: #1765cc;
+    --accent-focus: rgba(26, 115, 232, 0.15);
+    --border: #dadce0;
+    --border-light: #e8eaed;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-dropdown: 0 2px 6px rgba(0,0,0,0.12);
+    --shadow-elevated: 0 1px 2px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+    --danger: #c5221f;
+    --danger-hover: #d93025;
+    --warning: #e37400;
+    --warning-hover: #f29900;
+    --color-secure: #188038;
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(0, 0, 0, 0.1);
+  }
+}
+
 [data-theme="light"] {
   color-scheme: light;
   --bg-app: #f8f9fa;

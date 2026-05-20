@@ -9,6 +9,8 @@ export const BookmarkBar: React.FC = React.memo(() => {
   const settings = useVeilStore((s) => s.settings);
   const [openFolder, setOpenFolder] = useState<string | null>(null);
   const folderRef = useRef<HTMLDivElement>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const draggedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!openFolder) return;
@@ -22,9 +24,6 @@ export const BookmarkBar: React.FC = React.memo(() => {
   }, [openFolder]);
 
   if (!settings.appearance.showBookmarksBar || bookmarks.length === 0) return null;
-
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const draggedIdRef = useRef<string | null>(null);
 
   const handleBookmarkClick = (url: string) => {
     if (activeTab) {

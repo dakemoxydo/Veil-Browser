@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useVeilStore } from '../store/useVeilStore';
-import { VeilSettings, ProxySettings } from '@veil/shared';
+import { VeilSettings, ProxySettings, DEFAULT_SETTINGS } from '@veil/shared';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type SettingsTab = 'general' | 'privacy' | 'appearance' | 'proxy';
 
@@ -10,6 +11,7 @@ export const SettingsPage: React.FC = React.memo(() => {
   const debugPanelVisible = useVeilStore((s) => s.debugPanelVisible);
   const toggleDebugPanel = useVeilStore((s) => s.toggleDebugPanel);
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const update = (partial: Partial<VeilSettings>) => {
     dispatch({ type: 'SETTINGS_UPDATE', payload: partial });
@@ -448,6 +450,35 @@ export const SettingsPage: React.FC = React.memo(() => {
           </div>
         )}
       </div>
+
+      {/* Reset to defaults (C43) */}
+      <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => setShowResetConfirm(true)}
+          style={{
+            padding: '8px 20px',
+            borderRadius: '8px',
+            border: '1px solid var(--border)',
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+            fontSize: '13px',
+            cursor: 'pointer',
+          }}
+        >
+          Reset to defaults
+        </button>
+      </div>
+
+      {showResetConfirm && (
+        <ConfirmDialog
+          title="Reset settings"
+          message="This will reset all settings to their default values. Your bookmarks, history, and downloads will not be affected."
+          confirmLabel="Reset"
+          variant="warning"
+          onConfirm={() => { setShowResetConfirm(false); dispatch({ type: 'SETTINGS_UPDATE', payload: DEFAULT_SETTINGS }); }}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
     </div>
   );
 });

@@ -16,9 +16,9 @@ export const FindBar: React.FC<FindBarProps> = React.memo(({ onClose }) => {
     };
   }, []);
 
-  const doFind = useCallback((query: string) => {
+  const doFind = useCallback((query: string, forward: boolean = true) => {
     if (window.veil?.findInPage) {
-      window.veil.findInPage(query).catch(() => {});
+      window.veil.findInPage(query, { findNext: true, forward }).catch(() => {});
     }
   }, []);
 
@@ -26,14 +26,14 @@ export const FindBar: React.FC<FindBarProps> = React.memo(({ onClose }) => {
     const val = e.target.value;
     setText(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doFind(val), 150);
+    debounceRef.current = setTimeout(() => doFind(val, true), 150);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose();
     } else if (e.key === 'Enter') {
-      doFind(text);
+      doFind(text, !e.shiftKey);
     }
   };
 
@@ -65,6 +65,36 @@ export const FindBar: React.FC<FindBarProps> = React.memo(({ onClose }) => {
         placeholder="Find in page..."
         className="find-bar-input"
       />
+      <button
+        onClick={() => doFind(text, false)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text-secondary)',
+          cursor: 'pointer',
+          fontSize: '13px',
+          padding: '2px 6px',
+          borderRadius: 'var(--radius-sm)',
+        }}
+        aria-label="Find previous"
+      >
+        Prev
+      </button>
+      <button
+        onClick={() => doFind(text, true)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text-secondary)',
+          cursor: 'pointer',
+          fontSize: '13px',
+          padding: '2px 6px',
+          borderRadius: 'var(--radius-sm)',
+        }}
+        aria-label="Find next"
+      >
+        Next
+      </button>
       <button
         onClick={onClose}
         style={{

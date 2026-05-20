@@ -1,4 +1,3 @@
-import { VeilService } from '../core/ServiceRegistry';
 import { ILogger, IEventBus, IErrorHandler, IStateBroadcaster } from '../core/interfaces';
 import { ISession } from '../core/ports/ISession';
 import { BaseService } from '../core/BaseService';

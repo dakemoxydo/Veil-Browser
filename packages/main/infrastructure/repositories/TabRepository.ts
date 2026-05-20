@@ -1,15 +1,22 @@
-import { Tab, TabInfo } from '@veil/shared';
+import { Tab, TabInfo, TabGroup } from '@veil/shared';
 import { ITabRepository } from '../../core/repositories/ITabRepository';
 import { IPersistenceService } from '../../core/interfaces';
 
 interface TabsData {
   tabs: TabInfo[];
   activeTabId: string | null;
+  // UI state persistence (A4) — additive, backwards-compatible
+  pinnedIds?: string[];
+  mutedIds?: string[];
+  tabGroups?: TabGroup[];
 }
 
 export class TabRepository implements ITabRepository {
   private tabs: Tab[] = [];
   private activeTabId: string | null = null;
+  private pinnedIds: string[] = [];
+  private mutedIds: string[] = [];
+  private tabGroups: TabGroup[] = [];
 
   constructor(private persistence: IPersistenceService) {}
 
@@ -47,11 +54,41 @@ export class TabRepository implements ITabRepository {
     this.saveTabs();
   }
 
-  restoreTabs(): { tabs: TabInfo[]; activeTabId: string | null } {
+  getPinnedIds(): string[] {
+    return [...this.pinnedIds];
+  }
+
+  setPinnedIds(ids: string[]): void {
+    this.pinnedIds = ids;
+    this.saveTabs();
+  }
+
+  getMutedIds(): string[] {
+    return [...this.mutedIds];
+  }
+
+  setMutedIds(ids: string[]): void {
+    this.mutedIds = ids;
+    this.saveTabs();
+  }
+
+  getTabGroups(): TabGroup[] {
+    return this.tabGroups.map(g => ({ ...g }));
+  }
+
+  setTabGroups(groups: TabGroup[]): void {
+    this.tabGroups = groups;
+    this.saveTabs();
+  }
+
+  restoreTabs(): { tabs: TabInfo[]; activeTabId: string | null; pinnedIds: string[]; mutedIds: string[]; tabGroups: TabGroup[] } {
     const data = this.persistence.load<TabsData>('tabs.json', { tabs: [], activeTabId: null });
     return {
       tabs: data.tabs || [],
       activeTabId: data.activeTabId ?? null,
+      pinnedIds: data.pinnedIds || [],
+      mutedIds: data.mutedIds || [],
+      tabGroups: data.tabGroups || [],
     };
   }
 
@@ -59,6 +96,9 @@ export class TabRepository implements ITabRepository {
     const data: TabsData = {
       tabs: this.tabs.map(t => t.toJSON()),
       activeTabId: this.activeTabId,
+      pinnedIds: this.pinnedIds,
+      mutedIds: this.mutedIds,
+      tabGroups: this.tabGroups,
     };
     this.persistence.save('tabs.json', data);
   }

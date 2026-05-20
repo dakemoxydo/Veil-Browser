@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow, session } from 'electron';
+import { app, ipcMain, BrowserWindow, session, dialog } from 'electron';
 import * as os from 'os';
 import { VeilWindow } from './core/VeilWindow';
 import { DebugWindow } from './core/DebugWindow';
@@ -27,6 +27,8 @@ import { HttpsUpgradeService } from './services/HttpsUpgradeService';
 import { ProxyService } from './services/ProxyService';
 import { PasswordService } from './services/PasswordService';
 import { ProfileService } from './services/ProfileService';
+import { ScriptBlockService } from './services/ScriptBlockService';
+import { CertificateExceptionService } from './services/CertificateExceptionService';
 import { TabRepository } from './infrastructure/repositories/TabRepository';
 import { BookmarkRepository } from './infrastructure/repositories/BookmarkRepository';
 import { HistoryRepository } from './infrastructure/repositories/HistoryRepository';
@@ -133,29 +135,7 @@ if (!gotLock) {
 }
 
 // Custom SSL error page — block certificate errors by default
-app.on('certificate-error', (event, webContents, _url, _error, _cert, callback) => {
-  // Block all certificate errors by default (privacy-first)
-  event.preventDefault();
-  callback(false);
-
-  // Show custom error page
-  const errorHtml = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Security Error</title>
-<style>
-  body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-  .container { text-align: center; max-width: 500px; padding: 40px; }
-  h1 { font-size: 24px; color: #ef4444; margin-bottom: 16px; }
-  p { color: #a0a0b0; line-height: 1.6; margin-bottom: 24px; }
-  .icon { font-size: 48px; margin-bottom: 16px; }
-</style></head><body>
-<div class="container">
-  <div class="icon">&#128274;</div>
-  <h1>Connection Not Secure</h1>
-  <p>This site's security certificate is not trusted. Veil Browser blocked this connection to protect your privacy.</p>
-  <p style="font-size:12px;color:#666;">If you trust this site, you can add an exception in Settings &gt; Privacy.</p>
-</div></body></html>`;
-  webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`);
-});
+// Certificate error handler — integrated with CertificateExceptionService in initializeApp
 
 // App lifecycle — all Electron-dependent initialization happens here
 async function initializeApp() {
@@ -182,6 +162,11 @@ async function initializeApp() {
   const ALLOWED_PERMISSIONS = new Set(['clipboard-read', 'clipboard-sanitized-write']);
   sessionAdapter.setPermissionRequestHandler((permission, callback) => {
     callback(ALLOWED_PERMISSIONS.has(permission));
+  });
+
+  // Permission check handler — same allowlist for synchronous checks (A22)
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => {
+    return ALLOWED_PERMISSIONS.has(permission);
   });
 
   // Security headers — applied to all HTTP responses
@@ -331,14 +316,17 @@ async function initializeApp() {
     return { success: true };
   });
 
-  ipcMain.handle('veil:find-in-page', (_event, text: string) => {
+  ipcMain.handle('veil:find-in-page', (_event, text: string, options?: { findNext?: boolean; forward?: boolean }) => {
     try {
       const activeId = tabService.getActiveTabId();
       if (!activeId) return { success: false };
       const view = mainWindow.viewManager.getView(activeId);
       if (!view) return { success: false };
       if (text) {
-        view.webContents.findInPage(text);
+        view.webContents.findInPage(text, {
+          findNext: options?.findNext ?? true,
+          forward: options?.forward ?? true,
+        });
       } else {
         view.webContents.stopFindInPage('clearSelection');
       }
@@ -458,6 +446,41 @@ async function initializeApp() {
   const httpsService = new HttpsUpgradeService(sessionAdapter, settingsService, logger);
   registry.register(httpsService);
   currentHttps = httpsService;
+
+  // Script blocking (NoScript-like per-site JS blocking)
+  const scriptBlockService = new ScriptBlockService(sessionAdapter, eventBus, errorHandler, logger, stateBroadcaster);
+  registry.register(scriptBlockService);
+
+  // Certificate exceptions (allows bypassing SSL errors for specific certs)
+  const certExceptionService = new CertificateExceptionService(settingsService, logger);
+
+  // Wire certificate exceptions into the certificate-error handler
+  app.on('certificate-error', (event, webContents, _url, _error, cert, callback) => {
+    if (certExceptionService.isException(cert.fingerprint)) {
+      event.preventDefault();
+      callback(true);
+      return;
+    }
+    // Block and show error page
+    event.preventDefault();
+    callback(false);
+    const errorHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Security Error</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+  .container { text-align: center; max-width: 500px; padding: 40px; }
+  h1 { font-size: 24px; color: #ef4444; margin-bottom: 16px; }
+  p { color: #a0a0b0; line-height: 1.6; margin-bottom: 24px; }
+  .icon { font-size: 48px; margin-bottom: 16px; }
+</style></head><body>
+<div class="container">
+  <div class="icon">&#128274;</div>
+  <h1>Connection Not Secure</h1>
+  <p>This site's security certificate is not trusted. Veil Browser blocked this connection to protect your privacy.</p>
+  <p style="font-size:12px;color:#666;">If you trust this site, you can add an exception in Settings &gt; Privacy.</p>
+</div></body></html>`;
+    webContents.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(errorHtml));
+  });
 
   // Incognito mode
   const incognitoService = new IncognitoService(eventBus, errorHandler, logger);
@@ -714,7 +737,6 @@ async function initializeApp() {
     if (!activeTabId) return { success: false, error: 'No active tab' };
     const view = mainWindow.viewManager.getView(activeTabId);
     if (!view) return { success: false, error: 'No view' };
-    const { dialog } = require('electron');
     const result = await dialog.showSaveDialog(mainWindow.window, {
       defaultPath: `${view.webContents.getTitle() || 'page'}.html`,
       filters: [{ name: 'Web Page', extensions: ['html'] }],
@@ -851,8 +873,7 @@ async function initializeApp() {
       if (activeTabId) {
         const view = mainWindow.viewManager.getView(activeTabId);
         if (view) {
-          const { dialog } = require('electron');
-          dialog.showSaveDialog(mainWindow.window, {
+                dialog.showSaveDialog(mainWindow.window, {
             defaultPath: `${view.webContents.getTitle() || 'page'}.html`,
             filters: [{ name: 'Web Page', extensions: ['html'] }],
           }).then((result: Electron.SaveDialogReturnValue) => {
@@ -883,9 +904,9 @@ async function initializeApp() {
   // Restore tabs on launch if setting is enabled
   const settings = settingsService.getSettings();
   if (settings.general.restoreTabsOnLaunch) {
-    const { tabs: savedTabs, activeTabId } = tabRepo.restoreTabs();
+    const { tabs: savedTabs, activeTabId, pinnedIds, mutedIds, tabGroups: savedTabGroups } = tabRepo.restoreTabs();
     if (savedTabs.length > 0) {
-      tabService.restoreTabs(savedTabs, activeTabId);
+      tabService.restoreTabs(savedTabs, activeTabId, pinnedIds, mutedIds, savedTabGroups);
       // Register tab URLs with history service for title tracking
       for (const tab of savedTabs) {
         historyService.registerTabUrl(tab.id, tab.url);

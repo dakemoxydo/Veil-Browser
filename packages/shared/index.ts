@@ -1,3 +1,29 @@
+/**
+ * Heuristic URL detection — returns true if input looks like a URL rather than a search query.
+ * Rules: no spaces; contains ://, or matches domain pattern, or is localhost/IP.
+ */
+export function looksLikeUrl(input: string): boolean {
+  const trimmed = input.trim();
+  if (!trimmed || /\s/.test(trimmed)) return false;
+
+  // Explicit scheme
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) return true;
+
+  // localhost with optional port/path
+  if (/^localhost(:\d+)?(\/.*)?$/i.test(trimmed)) return true;
+
+  // IP addresses (v4)
+  if (/^\d{1,3}(\.\d{1,3}){3}(:\d+)?(\/.*)?$/.test(trimmed)) return true;
+
+  // IPv6 bracket notation
+  if (/^\[[\da-fA-F:]+\](:\d+)?(\/.*)?$/.test(trimmed)) return true;
+
+  // Domain-like: labels separated by dots, final label >= 2 letters, optional port/path
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}(:\d+)?(\/.*)?$/i.test(trimmed)) return true;
+
+  return false;
+}
+
 export type SearchEngine = 'duckduckgo' | 'google' | 'brave' | 'custom';
 
 export function getSearchUrl(query: string, engine: SearchEngine, customUrl?: string): string {
@@ -272,7 +298,7 @@ export interface VeilAPI {
   setShellOffset: (offset: number) => Promise<IPCResult>;
   setViewMode: (mode: 'browser' | 'settings') => Promise<IPCResult>;
   setOverlayVisible: (visible: boolean) => Promise<IPCResult>;
-  findInPage: (text: string) => Promise<IPCResult>;
+  findInPage: (text: string, options?: { findNext?: boolean; forward?: boolean }) => Promise<IPCResult>;
   stopFind: () => Promise<IPCResult>;
   clearCookies: () => Promise<IPCResult>;
   version: () => Promise<{ appVersion: string; electronVersion: string; chromeVersion: string; nodeVersion: string; v8Version: string; os: string; osVersion: string }>;

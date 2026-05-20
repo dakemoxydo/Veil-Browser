@@ -40,6 +40,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       } else if (e.key === 'Enter') {
         e.preventDefault();
         onConfirm();
+      } else if (e.key === 'Tab') {
+        // Trap focus inside dialog (C51)
+        const dialog = document.querySelector('[role="dialog"]');
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>('button, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);

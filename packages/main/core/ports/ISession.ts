@@ -51,4 +51,5 @@ export interface ISession {
   removeCookie(url: string, name: string): Promise<void>;
   clearAllCookies(): Promise<void>;
   setPermissionRequestHandler(handler: ((permission: string, callback: (granted: boolean) => void) => void) | null): void;
+  setPreloads(paths: string[]): void;
 }

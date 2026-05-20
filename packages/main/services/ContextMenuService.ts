@@ -39,12 +39,25 @@ export class ContextMenuService extends BaseService {
   }
 
   public async init() {
-    // Auto-register context menu on all new webContents (tabs, etc.)
+    // Only register context menu on webContents that are not the shell renderer
+    // (shell webContents should show OS default menu or nothing)
     this.webContentsHandler = (_, webContents) => {
-      this.registerTabContextMenu(webContents);
+      // Skip the shell window's own webContents — only register on tab views
+      const url = webContents.getURL();
+      const isRendererShell = url.startsWith('http://localhost') || url.startsWith('file://') || url.includes('veil://');
+      if (!isRendererShell && webContents.getType() !== 'window') {
+        this.registerTabContextMenu(webContents);
+      }
     };
     app.on('web-contents-created', this.webContentsHandler);
     this.logger.info('ContextMenuService initialized');
+  }
+
+  /**
+   * Register context menu on a specific tab webContents (called from TabService).
+   */
+  public registerForTab(webContents: Electron.WebContents): void {
+    this.registerTabContextMenu(webContents);
   }
 
   public destroy(): void {
@@ -98,7 +111,12 @@ export class ContextMenuService extends BaseService {
     if (params.mediaType === 'image') {
       menu.append(new MenuItem({
         label: 'Save image as...',
-        click: () => tabWebContents.downloadURL(params.srcURL),
+        enabled: isSafeUrl(params.srcURL),
+        click: () => {
+          if (isSafeUrl(params.srcURL)) {
+            tabWebContents.downloadURL(params.srcURL);
+          }
+        },
       }));
       menu.append(new MenuItem({
         label: 'Copy image URL',
@@ -154,9 +172,12 @@ export class ContextMenuService extends BaseService {
     menu.append(new MenuItem({
       label: 'View page source',
       accelerator: 'CmdOrCtrl+U',
+      enabled: isSafeUrl(tabWebContents.getURL()),
       click: () => {
         const url = tabWebContents.getURL();
-        this.tabService.handleAction({ type: 'TAB_NEW', payload: { url: `view-source:${url}` } });
+        if (isSafeUrl(url)) {
+          this.tabService.handleAction({ type: 'TAB_NEW', payload: { url: `view-source:${url}` } });
+        }
       },
     }));
     menu.append(new MenuItem({

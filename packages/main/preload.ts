@@ -25,9 +25,9 @@ contextBridge.exposeInMainWorld('veil', {
   setShellOffset: (offset: number): Promise<IPCResult> => ipcRenderer.invoke('veil:set-shell-offset', offset),
   setViewMode: (mode: 'browser' | 'settings'): Promise<IPCResult> => ipcRenderer.invoke('veil:set-view-mode', mode),
   setOverlayVisible: (visible: boolean): Promise<IPCResult> => ipcRenderer.invoke('veil:set-overlay-visible', visible),
-  findInPage: (text: string): Promise<IPCResult> => ipcRenderer.invoke('veil:find-in-page', text),
+  findInPage: (text: string, options?: { findNext?: boolean; forward?: boolean }): Promise<IPCResult> => ipcRenderer.invoke('veil:find-in-page', text, options),
   stopFind: (): Promise<IPCResult> => ipcRenderer.invoke('veil:stop-find'),
-  clearCookies: (): Promise<IPCResult> => ipcRenderer.invoke('veil:clear-cookies'),
+  // clearCookies removed from renderer API — use clear-browsing-data IPC instead
   version: (): Promise<{ appVersion: string; electronVersion: string; chromeVersion: string; nodeVersion: string; v8Version: string; os: string; osVersion: string }> => ipcRenderer.invoke('veil:version'),
   historyList: (): Promise<{ entries: { id: string; url: string; title: string; timestamp: number }[] }> => ipcRenderer.invoke('veil:history-list'),
   historyClear: (): Promise<IPCResult> => ipcRenderer.invoke('veil:history-clear'),

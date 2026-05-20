@@ -27,9 +27,10 @@ function processFile(filePath) {
   if (!content.includes('@veil/shared')) return false;
 
   const relPath = getRelativePath(filePath);
+  // Handle both @veil/shared and @veil/shared/subpath (A32)
   const newContent = content.replace(
-    /require\(["']@veil\/shared["']\)/g,
-    `require("${relPath}")`
+    /require\((['"])@veil\/shared(\/[^'"]+)?\1\)/g,
+    (match, quote, subpath) => `require(${quote}${relPath}${subpath || ''}${quote})`
   );
 
   if (newContent !== content) {

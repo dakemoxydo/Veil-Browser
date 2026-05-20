@@ -52,6 +52,10 @@ export class Tab {
     this.loadProgress = 0;
   }
 
+  setUrl(url: string): void {
+    this.url = url;
+  }
+
   startLoading(): void {
     this.isLoading = true;
     this.loadProgress = 0;

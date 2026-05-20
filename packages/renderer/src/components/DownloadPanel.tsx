@@ -57,7 +57,7 @@ export const DownloadPanel: React.FC = React.memo(() => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, updateDropdownPos]);
+  }, [isOpen, updateDropdownPos, setIsOpen]);
 
   const activeDownloads = useMemo(() => downloads.filter(d => d.state === 'progressing'), [downloads]);
   const recentDownloads = useMemo(() => isOpen ? downloads.slice(0, 5) : [], [downloads, isOpen]);

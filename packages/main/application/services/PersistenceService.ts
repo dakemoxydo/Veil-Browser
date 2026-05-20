@@ -77,23 +77,39 @@ export class PersistenceService implements IPersistenceService {
   }
 
   private writeAsync(filename: string, data: unknown): void {
-    const filePath = path.join(this.dataDir, this.sanitizeFilename(filename));
-    fs.writeFile(filePath, JSON.stringify(data), 'utf-8', (error) => {
-      if (error) {
+    const sanitized = this.sanitizeFilename(filename);
+    const filePath = path.join(this.dataDir, sanitized);
+    const tmpPath = filePath + '.tmp';
+    fs.writeFile(tmpPath, JSON.stringify(data), 'utf-8', (writeErr) => {
+      if (writeErr) {
         this.errorHandler.handle(
           'PERSISTENCE_SAVE_FAILED',
-          `Failed to save ${filename}: ${error}`,
+          `Failed to save ${filename}: ${writeErr}`,
           ErrorSeverity.MEDIUM,
           'PersistenceService'
         );
+        return;
       }
+      fs.rename(tmpPath, filePath, (renameErr) => {
+        if (renameErr) {
+          this.errorHandler.handle(
+            'PERSISTENCE_SAVE_FAILED',
+            `Failed to rename temp file for ${filename}: ${renameErr}`,
+            ErrorSeverity.MEDIUM,
+            'PersistenceService'
+          );
+        }
+      });
     });
   }
 
   private writeSync(filename: string, data: unknown): void {
     try {
-      const filePath = path.join(this.dataDir, this.sanitizeFilename(filename));
-      fs.writeFileSync(filePath, JSON.stringify(data), 'utf-8');
+      const sanitized = this.sanitizeFilename(filename);
+      const filePath = path.join(this.dataDir, sanitized);
+      const tmpPath = filePath + '.tmp';
+      fs.writeFileSync(tmpPath, JSON.stringify(data), 'utf-8');
+      fs.renameSync(tmpPath, filePath);
     } catch (error) {
       this.errorHandler.handle(
         'PERSISTENCE_SAVE_FAILED',

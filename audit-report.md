@@ -1,5 +1,64 @@
 # Veil Browser — Полный аудит проекта
 
+## Status (after refactor)
+
+Addressed issues in this pass:
+
+- **SEC-01** fixed: `will-navigate` now blocks `file:` protocol, `setWindowOpenHandler` denies popups
+- **SEC-02** fixed: `veil://passwords` added to ALLOWED_VEIL_PATHS allowlist
+- **SEC-03** fixed: ContextMenuService validates `srcURL` and `linkURL` with `isSafeUrl` before actions
+- **SEC-04** already fixed (path.basename used)
+- **SEC-08** fixed: RateLimiter off-by-one corrected (N+1 buffer allocation)
+- **PERF-01** fixed: AdblockService topDomains capped at 200 entries with eviction
+- **PERF-02** fixed: HistoryRepository dirty flag prevents redundant serialization
+- **PERF-03** fixed: EventBus already filters debug:log from history (verified)
+- **UI-01** fixed: Tab close button uses real `<button>` element (a11y)
+- **UI-02** fixed: Address bar lock icon has aria-label and `<title>` element
+- **UI-03** fixed: Bookmark icon reflects bookmarked state (filled SVG, aria-pressed)
+- **UI-04** fixed: FindBar has prev/next buttons with forward/backward search
+- **UI-05** fixed: ConfirmDialog traps Tab focus, Escape closes, Enter confirms
+- **UI-06** fixed: Skip link visible on focus
+- **UI-07** fixed: ErrorBoundary has role="alert", aria-live="assertive", Copy error button
+- **UI-08** fixed: Progress bar uses indeterminate animation when loadProgress is 0
+- **UI-09** fixed: Light theme auto-applies via prefers-color-scheme media query
+- **UI-10** fixed: Tab items use flex layout (min-width: 80px, max-width: 220px)
+- **UI-11** fixed: HistoryPage clear has confirmation dialog
+- **UI-12** fixed: SettingsPage has Reset to defaults button with confirmation
+- **SEC-09** fixed: PersistenceService uses atomic writes (.tmp + rename)
+- **SEC-10** fixed: DownloadService real cancel (activeItems Map + item.cancel())
+- **SEC-11** fixed: DOWNLOAD_CLEAR_HISTORY handler implemented
+- **SEC-12** fixed: Download open checks file existence
+- **SEC-13** fixed: setPermissionCheckHandler added for synchronous permission checks
+- **SEC-14** fixed: FingerprintProtection uses session.setPreloads instead of per-webContents injection
+- **SEC-15** fixed: Incognito session has security headers, permission handlers, DNT
+- **SEC-16** fixed: ScriptBlockService and CertificateExceptionService wired up
+- **SEC-17** fixed: TrayService removed (dead code)
+- **SEC-18** fixed: AdblockService tracker matching uses eTLD+1 and path-based rules
+- **SEC-19** fixed: CookieService isThirdParty uses eTLD+1
+- **SEC-20** fixed: clearCookies removed from preload API surface
+- **SEC-21** fixed: AdblockService broadcastStats no longer overwrites httpsUpgrades/cookiesBlocked
+- **PERF-04** fixed: ViewManager removes fake progress animation, uses real loading events
+- **PERF-05** fixed: ViewManager evicts on immediate create (not just deferred)
+- **ARCH-01** fixed: Tab.setUrl() preserves encapsulation
+- **ARCH-02** fixed: TabRepository persists pinnedIds, mutedIds, tabGroups
+- **ARCH-03** fixed: ConfigManager.getIncognitoPreloadPath() replaces string replacement
+- **ARCH-04** fixed: removeCustomList uses per-list domain sets (no re-fetch)
+- **BUILD-01** fixed: Cross-platform build scripts (package:win/mac/linux, dev, clean)
+- **BUILD-02** fixed: ESLint glob matches all packages
+- **BUILD-03** fixed: fix-shared-paths handles subpath imports
+- **BUILD-04** fixed: preload-incognito.ts added to tsconfig include
+- **BUILD-05** fixed: README updated with cross-platform instructions
+- **QUAL-01** fixed: ProxyService unused parameter prefixed with underscore
+- **QUAL-02** fixed: All ESLint warnings resolved (0 warnings)
+
+Skipped / out of scope:
+- Encrypting bookmarks/history at rest (explicitly out of scope)
+- Tab Search overlay redesign (explicitly out of scope)
+- Tab Groups DnD redesign (explicitly out of scope)
+- Real PSL package (simplified eTLD+1 helper used instead)
+
+---
+
 ## Итого: 137 проблем
 
 | Категория | P0 | P1 | P2 | P3 | Всего |

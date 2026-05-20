@@ -22,17 +22,26 @@ cd Veil-Browser
 # Установить зависимости
 npm install
 
-# Собрать и запустить
-npm run build
+# Запуск в режиме разработки (macOS / Linux / Windows)
 npm run dev
+
+# Production build
+npm run build
+
+# Запуск тестов
+npm run test
 ```
 
-### Сборка .exe
+### Сборка под разные платформы
 
 ```bash
-npm run package
-# Результат: dist-release/Veil Browser Setup.exe
+npm run package          # сборка под текущую ОС
+npm run package:win      # Windows portable .exe
+npm run package:mac      # macOS .dmg
+npm run package:linux    # Linux AppImage
 ```
+
+> Windows-утилита `build.bat` предназначена для быстрой сборки портативного .exe.
 
 ---
 

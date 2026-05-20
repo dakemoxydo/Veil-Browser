@@ -14,6 +14,9 @@ export class DownloadService extends BaseService {
   private cleanupDownloadListener: (() => void) | null = null;
   private listenerCleanups: Array<() => void> = [];
   private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  // Track active Electron.DownloadItem references for real cancellation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private activeItems = new Map<string, any>();
 
   constructor(
     private session: ISession,
@@ -79,6 +82,7 @@ export class DownloadService extends BaseService {
       const download = Download.create(filename, item.getURL(), filePath, item.getTotalBytes());
 
       this.downloadRepo.add(download);
+      this.activeItems.set(download.id, item);
       this.broadcastDownloads();
       this.eventBus.emit(EventTypes.DOWNLOAD_STARTED, download.toJSON());
 
@@ -99,6 +103,7 @@ export class DownloadService extends BaseService {
       });
 
       item.once('done', ({ state }) => {
+        this.activeItems.delete(download.id);
         const existing = this.downloadRepo.getById(download.id);
         if (existing) {
           if (state === 'completed') {
@@ -133,12 +138,29 @@ export class DownloadService extends BaseService {
       case 'DOWNLOAD_CANCEL': {
         const id = action.payload?.id;
         if (!id) return;
+        // Cancel the actual Electron download item first
+        const electronItem = this.activeItems.get(id);
+        if (electronItem) {
+          try { electronItem.cancel(); } catch { /* already done */ }
+          this.activeItems.delete(id);
+        }
         const download = this.downloadRepo.getById(id);
         if (download && download.isActive()) {
           download.cancel();
           this.broadcastDownloads();
           this.eventBus.emit(EventTypes.DOWNLOAD_CANCELLED, { id });
         }
+        break;
+      }
+      case 'DOWNLOAD_CLEAR_HISTORY': {
+        // Remove all non-progressing downloads from the repo
+        const all = this.downloadRepo.getAll();
+        for (const d of all) {
+          if (d.state !== 'progressing') {
+            this.downloadRepo.remove(d.id);
+          }
+        }
+        this.broadcastDownloads();
         break;
       }
       case 'DOWNLOAD_OPEN': {
@@ -155,6 +177,11 @@ export class DownloadService extends BaseService {
           const ext = path.extname(download.filename).toLowerCase();
           if (dangerousExts.includes(ext)) {
             this.logger.warn(`Blocked opening executable file: ${download.filename}`);
+            return;
+          }
+          // Check file still exists before opening (A18)
+          if (!fs.existsSync(download.path)) {
+            this.logger.warn(`Download file no longer exists: ${download.path}`);
             return;
           }
           shell.openPath(download.path).catch((err) => {

@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { HistoryEntry } from '@veil/shared';
 import { EmptyState } from './EmptyState';
 import { Skeleton } from './Skeleton';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export const HistoryPage: React.FC = React.memo(() => {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -44,7 +46,7 @@ export const HistoryPage: React.FC = React.memo(() => {
       <div style={{ padding: '32px 40px 24px', borderBottom: '1px solid var(--border-light)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>History</h1>
-          <button onClick={handleClear} style={clearBtnStyle}>Clear all history</button>
+          <button onClick={() => setShowClearConfirm(true)} style={clearBtnStyle}>Clear all history</button>
         </div>
         <input
           type="text"
@@ -110,6 +112,16 @@ export const HistoryPage: React.FC = React.memo(() => {
           ))
         )}
       </div>
+      {showClearConfirm && (
+        <ConfirmDialog
+          title="Clear all history"
+          message="This will permanently delete all browsing history. This action cannot be undone."
+          confirmLabel="Clear all"
+          variant="danger"
+          onConfirm={() => { setShowClearConfirm(false); handleClear(); }}
+          onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
     </div>
   );
 });

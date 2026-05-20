@@ -16,7 +16,6 @@ export const createTabSlice: StateCreator<TabSlice> = () => ({
 // Memoized selector: returns stable reference when active tab data hasn't changed.
 // Prevents re-renders from IPC patches that don't affect the active tab.
 let _prevTab: TabInfo | null = null;
-let _prevId: string | null = null;
 export const selectActiveTab = (state: TabSlice): TabInfo | null => {
   const tab = state.tabs.find(t => t.id === state.activeTabId) ?? null;
   if (tab === _prevTab) return _prevTab;
@@ -28,6 +27,5 @@ export const selectActiveTab = (state: TabSlice): TabInfo | null => {
     return _prevTab;
   }
   _prevTab = tab;
-  _prevId = tab?.id ?? null;
   return tab;
 };

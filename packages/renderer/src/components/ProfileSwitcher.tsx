@@ -4,7 +4,7 @@ import { Profile } from '@veil/shared';
 export const ProfileSwitcher: React.FC = React.memo(() => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [currentId, setCurrentId] = useState('default');
+  const [currentId] = useState('default');
   const [newName, setNewName] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

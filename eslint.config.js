@@ -18,6 +18,6 @@ module.exports = tseslint.config(
     },
   },
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/release/**', '**/*.js'],
+    ignores: ['**/dist/**', '**/node_modules/**', '**/release/**', '**/*.js', '**/*.d.ts'],
   }
 );

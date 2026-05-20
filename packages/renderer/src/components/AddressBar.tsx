@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useVeilStore, selectActiveTab } from '../store/useVeilStore';
-import { getSearchUrl, SuggestionItem } from '@veil/shared';
+import { getSearchUrl, looksLikeUrl, SuggestionItem } from '@veil/shared';
 import { DownloadPanel } from './DownloadPanel';
 
 export const AddressBar: React.FC = React.memo(() => {
@@ -27,7 +27,7 @@ export const AddressBar: React.FC = React.memo(() => {
     // Always sync on tab switch
     setValue(activeTab.url);
     lastSyncedUrl.current = activeTab.url;
-  }, [activeTabId]);
+  }, [activeTabId, activeTab]);
 
   // Sync URL on in-tab navigation (only when not focused)
   useEffect(() => {
@@ -36,7 +36,7 @@ export const AddressBar: React.FC = React.memo(() => {
       setValue(activeTab.url);
       lastSyncedUrl.current = activeTab.url;
     }
-  }, [activeTab?.url, isFocused]);
+  }, [activeTab, activeTab?.url, isFocused]);
 
   // Debounced search for suggestions
   useEffect(() => {
@@ -92,8 +92,9 @@ export const AddressBar: React.FC = React.memo(() => {
         dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url } });
       } else if (url.startsWith('http://') || url.startsWith('https://')) {
         dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url } });
-      } else if (/^(?!.*\.\w{1,4}$)[\w-]+(\.[\w-]+)+\.[a-zA-Z]{2,}$/.test(url) && !url.includes(' ')) {
-        dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url: `https://${url}` } });
+      } else if (looksLikeUrl(url)) {
+        const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url);
+        dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url: hasScheme ? url : `https://${url}` } });
       } else {
         dispatch({ type: 'TAB_NAVIGATE', payload: { id: activeTabId, url: getSearchUrl(url, searchEngine, customSearchUrl) } });
       }
@@ -202,20 +203,23 @@ export const AddressBar: React.FC = React.memo(() => {
             gap: 'var(--space-2)',
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            {activeTab?.url.startsWith('https') ? (
-              <>
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </>
-            ) : (
-              <>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12" y2="8" />
-              </>
-            )}
-          </svg>
+          <span aria-label={activeTab?.url.startsWith('https') ? 'Secure connection' : activeTab?.url.startsWith('veil://') ? 'Internal page' : 'Not secure'} style={{ display: 'flex', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <title>{activeTab?.url.startsWith('https') ? 'Secure connection' : activeTab?.url.startsWith('veil://') ? 'Internal page' : 'Not secure'}</title>
+              {activeTab?.url.startsWith('https') ? (
+                <>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </>
+              ) : (
+                <>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12" y2="8" />
+                </>
+              )}
+            </svg>
+          </span>
           <input
             type="text"
             placeholder="Search or enter URL"
@@ -252,14 +256,22 @@ export const AddressBar: React.FC = React.memo(() => {
 
         <button
           className="toolbar-btn"
-          aria-label="Bookmark this page"
+          aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
+          aria-pressed={isBookmarked}
           onClick={() => {
-            if (activeTab) {
+            if (!activeTab) return;
+            if (isBookmarked) {
+              const bm = bookmarks.find(b => b.url === activeTab.url);
+              if (bm) {
+                dispatch({ type: 'BOOKMARK_REMOVE', payload: { id: bm.id } });
+              }
+            } else {
               dispatch({ type: 'BOOKMARK_ADD', payload: { url: activeTab.url, title: activeTab.title } });
             }
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={isBookmarked ? 'var(--accent)' : 'none'} stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <title>{isBookmarked ? 'Remove bookmark' : 'Bookmark page'}</title>
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
           </svg>
         </button>
@@ -348,8 +360,8 @@ export const AddressBar: React.FC = React.memo(() => {
       {isLoading && (
         <div className="progress-bar">
           <div
-            className="progress-bar-fill"
-            style={{ width: `${activeTab?.loadProgress ?? 0}%` }}
+            className={`progress-bar-fill ${(activeTab?.loadProgress ?? 0) === 0 ? 'progress-indeterminate' : ''}`}
+            style={(activeTab?.loadProgress ?? 0) > 0 ? { width: `${activeTab?.loadProgress}%` } : undefined}
           />
         </div>
       )}

@@ -9,8 +9,7 @@ contextBridge.exposeInMainWorld('veil', {
   minimize: (): Promise<void> => ipcRenderer.invoke('veil:window-minimize'),
   maximize: (): Promise<void> => ipcRenderer.invoke('veil:window-maximize'),
   close: (): Promise<IPCResult> => ipcRenderer.invoke('veil:window-close'),
-  addLog: (level: string, source: string, message: string, data?: unknown): Promise<void> =>
-    ipcRenderer.invoke('veil:add-log', { level, source, message, data }),
+  // addLog removed — incognito should not leak logs to debug window (A49)
   onShortcut: (callback: (shortcut: string) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, shortcut: string) => callback(shortcut);
     ipcRenderer.on('veil:shortcut', handler);

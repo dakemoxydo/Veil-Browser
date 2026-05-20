@@ -62,7 +62,7 @@ export class ProxyService extends BaseService {
     return this.settingsRepo.get().proxy;
   }
 
-  public async handleAction(action: VeilAction) {
+  public async handleAction(_action: VeilAction) {
     // Proxy actions are handled via direct IPC, not through the action system
   }
 }

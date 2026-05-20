@@ -2,6 +2,7 @@ import { VeilAction } from '@veil/shared';
 import { ILogger } from '../core/interfaces';
 import { ISession } from '../core/ports/ISession';
 import { VeilService } from '../core/ServiceRegistry';
+import { getRegistrableDomain } from './utils/domain';
 
 interface SettingsServiceLike {
   getSettings(): {
@@ -68,13 +69,11 @@ export class CookieService implements VeilService {
 
   private isThirdParty(cookieDomain: string): boolean {
     const normalized = cookieDomain.startsWith('.') ? cookieDomain.slice(1) : cookieDomain;
+    const cookieRegistrable = getRegistrableDomain(normalized);
 
     for (const tabDomain of this.tabDomains.values()) {
-      if (
-        normalized === tabDomain ||
-        normalized.endsWith('.' + tabDomain) ||
-        tabDomain.endsWith('.' + normalized)
-      ) {
+      const tabRegistrable = getRegistrableDomain(tabDomain);
+      if (cookieRegistrable === tabRegistrable) {
         return false;
       }
     }

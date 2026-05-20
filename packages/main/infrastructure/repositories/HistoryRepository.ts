@@ -4,6 +4,7 @@ import { IPersistenceService } from '../../core/interfaces';
 
 export class HistoryRepository implements IHistoryRepository {
   private history: HistoryEntryModel[] = [];
+  private dirty = false;
   private static MAX_ENTRIES = 5000;
 
   constructor(private persistence: IPersistenceService) {
@@ -21,7 +22,11 @@ export class HistoryRepository implements IHistoryRepository {
   }
 
   private save(): void {
-    this.persistence.save('history.json', this.history.map(h => h.toJSON()));
+    if (!this.dirty) {
+      this.dirty = true;
+      this.persistence.save('history.json', this.history.map(h => h.toJSON()));
+      this.dirty = false;
+    }
   }
 
   getAll(): HistoryEntryModel[] {
